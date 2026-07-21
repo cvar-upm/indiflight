@@ -49,6 +49,7 @@
 
 #include "flight/mixer.h"
 #include "flight/pid.h"
+#include "flight/indi.h"
 #include "flight/imu.h"
 #include "flight/failsafe.h"
 #include "flight/position.h"
@@ -158,10 +159,29 @@ void piSendIMU(void)
     piSendMsg(&piMsgImuTx, &serialWriter);
 }
 
+// indiRun.omega_fs is indexed in Betaflight's own mixer output order
+// ([RR, FR, RL, FL], see mixer_init.c mixerQuadX[]) - NOT the
+// indi_controller/simulator convention used elsewhere in the workspace.
+void piSendMotor(void)
+{
+    piMsgMotorTx.time_us = micros();
+    piMsgMotorTx.omega0 = indiRun.omega_fs[0];
+    piMsgMotorTx.omega1 = indiRun.omega_fs[1];
+    piMsgMotorTx.omega2 = indiRun.omega_fs[2];
+    piMsgMotorTx.omega3 = indiRun.omega_fs[3];
+
+    piSendMsg(&piMsgMotorTx, &serialWriter);
+}
+
 void processPiTelemetry(void)
 {
-    // could do rate limiting with the stream stuffs above
+    // IMU every tick (2000Hz); motor telemetry every other tick (1000Hz) to
+    // keep total pi-protocol bandwidth comfortably under the UART's budget.
+    static uint32_t tick = 0;
     piSendIMU();
+    if ((tick++ & 1) == 0) {
+        piSendMotor();
+    }
 }
 
 pi_parse_states_t p_telem;
