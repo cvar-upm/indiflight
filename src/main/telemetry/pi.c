@@ -162,6 +162,13 @@ void piSendIMU(void)
 // indiRun.omega_fs is indexed in Betaflight's own mixer output order
 // ([RR, FR, RL, FL], see mixer_init.c mixerQuadX[]) - NOT the
 // indi_controller/simulator convention used elsewhere in the workspace.
+//
+// Guarded by USE_INDI: indiRun itself is only defined inside flight/indi.c's
+// own top-level #ifdef USE_INDI block (not just declared extern in indi.h),
+// so this doesn't just go stale without USE_INDI - it fails to link. There is
+// no non-INDI source for a synchronized/filtered per-motor speed estimate, so
+// motor telemetry is simply unavailable in a non-INDI build.
+#ifdef USE_INDI
 void piSendMotor(void)
 {
     piMsgMotorTx.time_us = micros();
@@ -172,16 +179,20 @@ void piSendMotor(void)
 
     piSendMsg(&piMsgMotorTx, &serialWriter);
 }
+#endif
 
 void processPiTelemetry(void)
 {
-    // IMU every tick (2000Hz); motor telemetry every other tick (1000Hz) to
-    // keep total pi-protocol bandwidth comfortably under the UART's budget.
-    static uint32_t tick = 0;
     piSendIMU();
+#ifdef USE_INDI
+    // Motor telemetry every other tick (1000Hz) alongside IMU every tick
+    // (2000Hz), to keep total pi-protocol bandwidth comfortably under the
+    // UART's budget.
+    static uint32_t tick = 0;
     if ((tick++ & 1) == 0) {
         piSendMotor();
     }
+#endif
 }
 
 pi_parse_states_t p_telem;
