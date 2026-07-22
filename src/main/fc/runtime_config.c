@@ -23,6 +23,7 @@
 
 #include "platform.h"
 
+#include "common/utils.h"
 #include "fc/runtime_config.h"
 #include "io/beeper.h"
 
@@ -59,8 +60,19 @@ const char *armingDisableFlagNames[]= {
     "DSHOT_BBANG",
     "NO_ACC_CAL",
     "MOTOR_PROTO",
+    "THROW_WAIT",
+    "THROWNOTRDY",
+    "CATAPULT_NR",
+    "NN_MODE",
     "ARMSWITCH",
 };
+// cli.c and osd_warnings.c both index this array directly by arming-disable
+// bit position with no bounds check - if this ever drifts out of sync with
+// armingDisableFlags_e again, that's an out-of-bounds read, not a compile
+// error, so guard it explicitly here.
+STATIC_ASSERT(
+    ARRAYLEN(armingDisableFlagNames) == ARMING_DISABLE_FLAGS_COUNT,
+    armingDisableFlagNames_must_match_armingDisableFlags_e);
 
 static armingDisableFlags_e armingDisableFlags = 0;
 
