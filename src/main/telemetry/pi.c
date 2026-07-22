@@ -213,11 +213,16 @@ void piSendEkfInputs(void)
 {
     piMsgEkfInputsTx.time_us = micros();
 
-    piMsgEkfInputsTx.x = (int16_t) (GRAVITYf * ((float)acc.accADC[0]) /
+    // accADCf (not accADC/accADCafterRpm): the fully-filtered signal, same
+    // chain everything else in the firmware uses (attitude, blackbox, OSD) -
+    // same units/scale as accADC (acc.dev.acc_1G-relative ticks), just later
+    // in the filter chain (RPM notch + acc_lpf_hz), so the same conversion
+    // formula applies unchanged.
+    piMsgEkfInputsTx.x = (int16_t) (GRAVITYf * ((float)acc.accADCf[0]) /
         ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
-    piMsgEkfInputsTx.y = (int16_t) (GRAVITYf * ((float)acc.accADC[1]) /
+    piMsgEkfInputsTx.y = (int16_t) (GRAVITYf * ((float)acc.accADCf[1]) /
         ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
-    piMsgEkfInputsTx.z = (int16_t) (GRAVITYf * ((float)acc.accADC[2]) /
+    piMsgEkfInputsTx.z = (int16_t) (GRAVITYf * ((float)acc.accADCf[2]) /
         ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
 
     piMsgEkfInputsTx.p = (int16_t) (((float) ((1 << 15) - 1)) * gyro.gyroADCf[0] * 0.0005f);
