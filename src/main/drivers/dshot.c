@@ -32,6 +32,7 @@
 #include "build/debug.h"
 #include "build/atomic.h"
 
+#include "common/filter.h"
 #include "common/maths.h"
 
 #include "config/feature.h"
@@ -50,8 +51,34 @@
 #include "io/hil.h"
 
 #include "rx/rx.h"
+
+#include "sensors/gyro.h"
+
 #include "dshot.h"
 
+#ifdef USE_DSHOT_TELEMETRY
+pt1Filter_t dshotErpmFilter[MAX_SUPPORTED_MOTORS];
+float dshotErpmf[MAX_SUPPORTED_MOTORS] = {0.f};
+
+void dshotInitErpmFiltering(void)
+{
+    const unsigned motorCount = motorDeviceCount();
+    const float gain = pt1FilterGain(DSHOT_ERPM_FILTER_LOWPASS_HZ, gyro.targetLooptime * 1e-6f);
+    for (unsigned motor = 0; motor < motorCount; motor++) {
+        pt1FilterInit(&dshotErpmFilter[motor], gain);
+    }
+}
+
+void dshotErpmFiltering(void)
+{
+    const unsigned motorCount = motorDeviceCount();
+    for (unsigned motor = 0; motor < motorCount; motor++) {
+        if (isDshotTelemetryActive() || getDshotTelemetry(motor)) {
+            dshotErpmf[motor] = pt1FilterApply(&dshotErpmFilter[motor], getDshotTelemetry(motor));
+        }
+    }
+}
+#endif // USE_DSHOT_TELEMETRY
 
 void dshotInitEndpoints(const motorConfig_t *motorConfig, float outputLimit, float *outputLow, float *outputHigh, float *disarm, float *deadbandMotor3dHigh, float *deadbandMotor3dLow)
 {

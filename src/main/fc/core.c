@@ -1448,6 +1448,10 @@ FAST_CODE void taskFiltering(timeUs_t currentTimeUs)
 {
     gyroFiltering(currentTimeUs);
 
+#ifdef USE_DSHOT_TELEMETRY
+    dshotErpmFiltering();
+#endif
+
 #ifdef USE_RPM_FILTER
     rpmFilterUpdate();
 #endif

@@ -56,6 +56,7 @@
 #include "drivers/camera_control.h"
 #include "drivers/compass/compass.h"
 #include "drivers/dma.h"
+#include "drivers/dshot.h"
 #include "drivers/exti.h"
 #include "drivers/flash.h"
 #include "drivers/inverter.h"
@@ -1041,6 +1042,10 @@ void init(void)
 #ifdef USE_MOTOR
     motorPostInit();
     motorEnable();
+#endif
+
+#ifdef USE_DSHOT_TELEMETRY
+    dshotInitErpmFiltering();
 #endif
 
     // On H7/G4 allocate SPI DMA streams after motor timers as SPI DMA allocate will always be possible

@@ -39,6 +39,7 @@
 #include "pg/rx.h"
 
 #include "drivers/accgyro/accgyro.h"
+#include "drivers/dshot.h"
 #include "drivers/sensor.h"
 #include "drivers/time.h"
 #include "drivers/light_led.h"
@@ -49,10 +50,10 @@
 
 #include "flight/mixer.h"
 #include "flight/pid.h"
-#include "flight/indi.h"
 #include "flight/imu.h"
 #include "flight/failsafe.h"
 #include "flight/position.h"
+#include "flight/rpm_filter.h"
 
 #include "io/serial.h"
 #include "io/gimbal.h"
@@ -159,23 +160,34 @@ void piSendIMU(void)
     piSendMsg(&piMsgImuTx, &serialWriter);
 }
 
-// indiRun.omega_fs is indexed in Betaflight's own mixer output order
+// dshotErpmf[] is indexed in Betaflight's own mixer output order
 // ([RR, FR, RL, FL], see mixer_init.c mixerQuadX[]) - NOT the
 // indi_controller/simulator convention used elsewhere in the workspace.
 //
-// Guarded by USE_INDI: indiRun itself is only defined inside flight/indi.c's
-// own top-level #ifdef USE_INDI block (not just declared extern in indi.h),
-// so this doesn't just go stale without USE_INDI - it fails to link. There is
-// no non-INDI source for a synchronized/filtered per-motor speed estimate, so
-// motor telemetry is simply unavailable in a non-INDI build.
-#ifdef USE_INDI
+// Guarded by USE_DSHOT_TELEMETRY, not USE_INDI: dshotErpmf[] is filtered
+// directly from getDshotTelemetry() (drivers/dshot.c dshotErpmFiltering(),
+// called every taskFiltering() tick independent of which controller is
+// active), so motor telemetry works the same whether INDI or stock PID is
+// flying. Deliberately NOT reusing indiRun.omega_fs[]: that only exists
+// behind USE_INDI (indi.c's own top-level #ifdef, not just an extern
+// declaration - referencing it without USE_INDI fails to link), and its
+// filtering is tuned for control-loop noise rejection (15Hz default cutoff)
+// rather than preserving telemetry bandwidth.
+#ifdef USE_DSHOT_TELEMETRY
 void piSendMotor(void)
 {
+    // Same conversion indiRun.erpmToRads uses (indi_init.c), just applied to
+    // the INDI-independent filtered value instead: eRPM -> rad/s directly,
+    // without the lossy float->uint16_t->float round trip erpmToRpm() would
+    // otherwise force.
+    const float erpmToRads = ERPM_PER_LSB / SECONDS_PER_MINUTE /
+        (motorConfig()->motorPoleCount / 2.f) * (2.f * M_PIf);
+
     piMsgMotorTx.time_us = micros();
-    piMsgMotorTx.omega0 = indiRun.omega_fs[0];
-    piMsgMotorTx.omega1 = indiRun.omega_fs[1];
-    piMsgMotorTx.omega2 = indiRun.omega_fs[2];
-    piMsgMotorTx.omega3 = indiRun.omega_fs[3];
+    piMsgMotorTx.omega0 = erpmToRads * dshotErpmf[0];
+    piMsgMotorTx.omega1 = erpmToRads * dshotErpmf[1];
+    piMsgMotorTx.omega2 = erpmToRads * dshotErpmf[2];
+    piMsgMotorTx.omega3 = erpmToRads * dshotErpmf[3];
 
     piSendMsg(&piMsgMotorTx, &serialWriter);
 }
@@ -184,7 +196,7 @@ void piSendMotor(void)
 void processPiTelemetry(void)
 {
     piSendIMU();
-#ifdef USE_INDI
+#ifdef USE_DSHOT_TELEMETRY
     // Motor telemetry every other tick (1000Hz) alongside IMU every tick
     // (2000Hz), to keep total pi-protocol bandwidth comfortably under the
     // UART's budget.

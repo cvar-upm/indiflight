@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "common/filter.h"
 #include "common/time.h"
 
 #include "pg/motor.h"
@@ -88,6 +89,18 @@ uint16_t prepareDshotPacket(dshotProtocolControl_t *pcb);
 
 #ifdef USE_DSHOT_TELEMETRY
 extern bool useDshotTelemetry;
+
+// eRPM low-pass filtering pipeline, independent of USE_INDI: pi-protocol's
+// motor telemetry (telemetry/pi.c piSendMotor()) reads dshotErpmf[] so it
+// keeps working in PID-only builds, unlike indiRun.omega_fs[] which only
+// exists when INDI is compiled in. Cutoff chosen to preserve telemetry
+// bandwidth (100Hz) rather than the much heavier control-loop-tuned
+// filtering INDI applies to its own internal omega_fs[] (15Hz default).
+#define DSHOT_ERPM_FILTER_LOWPASS_HZ (100.f)
+extern pt1Filter_t dshotErpmFilter[MAX_SUPPORTED_MOTORS];
+extern float dshotErpmf[MAX_SUPPORTED_MOTORS];
+void dshotInitErpmFiltering(void);
+void dshotErpmFiltering(void);
 
 typedef struct dshotTelemetryMotorState_s {
     uint16_t rawValue;
