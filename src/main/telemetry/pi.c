@@ -193,17 +193,60 @@ void piSendMotor(void)
 }
 #endif
 
+// Single synchronized bundle (accel + gyro + all 4 motor speeds, one sample
+// each, one time_us) for closing an offboard control loop - unlike piSendIMU
+// and piSendMotor sent independently, host-side clock sync can only tell you
+// *when* each stream's sample was taken, not retroactively align samples
+// that were physically taken at different instants. A control law that
+// numerically differentiates gyro and evaluates a control-effectiveness
+// matrix at the current motor speed (e.g. INDI) needs them from the same
+// instant, not just accurately timestamped.
+//
+// Fixed-point encoding matches pi-protocol's EKF_INPUTS.yaml exactly (also
+// makes this cheaper on wire than IMU+MOTOR combined: 24B payload vs 48B):
+//   x/y/z (accel, FRD): int16 * (9.81/2048) = m/s^2, +-16g full scale
+//   p/q/r (gyro rate, FRD): int16 * ((2000*pi/180)/32768) = rad/s, +-2000 deg/s full scale
+//   omega1-4: rad/s directly, no scaling (motor speeds always positive,
+//     comfortably inside int16 range despite the field being declared uint16_t)
+#ifdef USE_DSHOT_TELEMETRY
+void piSendEkfInputs(void)
+{
+    piMsgEkfInputsTx.time_us = micros();
+
+    piMsgEkfInputsTx.x = (int16_t) (GRAVITYf * ((float)acc.accADC[0]) /
+        ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
+    piMsgEkfInputsTx.y = (int16_t) (GRAVITYf * ((float)acc.accADC[1]) /
+        ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
+    piMsgEkfInputsTx.z = (int16_t) (GRAVITYf * ((float)acc.accADC[2]) /
+        ((float)acc.dev.acc_1G) * (2048.f / 9.81f));
+
+    piMsgEkfInputsTx.p = (int16_t) (((float) ((1 << 15) - 1)) * gyro.gyroADCf[0] * 0.0005f);
+    piMsgEkfInputsTx.q = (int16_t) (((float) ((1 << 15) - 1)) * gyro.gyroADCf[1] * 0.0005f);
+    piMsgEkfInputsTx.r = (int16_t) (((float) ((1 << 15) - 1)) * gyro.gyroADCf[2] * 0.0005f);
+
+    const float erpmToRads = ERPM_PER_LSB / SECONDS_PER_MINUTE /
+        (motorConfig()->motorPoleCount / 2.f) * (2.f * M_PIf);
+    piMsgEkfInputsTx.omega1 = (int16_t) (erpmToRads * dshotErpmf[0]);
+    piMsgEkfInputsTx.omega2 = (int16_t) (erpmToRads * dshotErpmf[1]);
+    piMsgEkfInputsTx.omega3 = (int16_t) (erpmToRads * dshotErpmf[2]);
+    piMsgEkfInputsTx.omega4 = (int16_t) (erpmToRads * dshotErpmf[3]);
+
+    piSendMsg(&piMsgEkfInputsTx, &serialWriter);
+}
+#endif
+
 void processPiTelemetry(void)
 {
-    piSendIMU();
 #ifdef USE_DSHOT_TELEMETRY
-    // Motor telemetry every other tick (1000Hz) alongside IMU every tick
-    // (2000Hz), to keep total pi-protocol bandwidth comfortably under the
-    // UART's budget.
-    static uint32_t tick = 0;
-    if ((tick++ & 1) == 0) {
-        piSendMotor();
-    }
+    // Full 2000Hz: the fixed-point EKF_INPUTS bundle (24B payload, ~27B
+    // framed) uses only ~59% of the pi-protocol UART's budget at 921600 baud
+    // even at the full TASK_TELEMETRY rate - comfortably more headroom than
+    // the old separate IMU(2kHz)+MOTOR(1kHz) split needed (~85B/tick average
+    // at 92% utilization), despite now sending synchronized motor data on
+    // every tick instead of every other one.
+    piSendEkfInputs();
+#else
+    piSendIMU();
 #endif
 }
 
