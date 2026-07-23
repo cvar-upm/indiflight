@@ -651,13 +651,18 @@ static void readRxChannelsApplyRanges(void)
 
         // sample the channel
         float sample;
+        // Gated on the box mode being active, not just the mask being nonzero:
+        // a leftover/unused msp_override_channels_mask must not permanently
+        // block the pi_override_channels_mask check below just because it
+        // happens to be configured - each override mechanism should only
+        // "claim" a channel while its own box mode is actually engaged.
 #if defined(USE_RX_MSP_OVERRIDE)
-        if (rxConfig()->msp_override_channels_mask) {
+        if (rxConfig()->msp_override_channels_mask && IS_RC_MODE_ACTIVE(BOXMSPOVERRIDE)) {
             sample = rxMspOverrideReadRawRc(&rxRuntimeState, rxConfig(), rawChannel);
         } else
 #endif
 #if defined(USE_RX_PI_OVERRIDE)
-        if (rxConfig()->pi_override_channels_mask) {
+        if (rxConfig()->pi_override_channels_mask && IS_RC_MODE_ACTIVE(BOXPIOVERRIDE)) {
             sample = rxPiOverrideReadRawRc(&rxRuntimeState, rxConfig(), rawChannel);
         } else
 #endif

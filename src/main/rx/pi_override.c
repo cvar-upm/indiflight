@@ -22,21 +22,39 @@
 #if defined(USE_RX_PI_OVERRIDE)
 
 #include "rx/pi_override.h"
-#include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 
 // RC_OVERRIDE only ever carries these 4 stick channels - unlike MSP_SET_RAW_RC,
 // there's no full-channel-count frame to fall back on, so this stays a small
-// fixed array indexed by the same ROLL/PITCH/YAW/THROTTLE indices rc_controls.h
-// already defines, rather than mirroring mspFrame[MAX_SUPPORTED_RC_CHANNEL_COUNT].
+// fixed array. It is NOT indexed by fc/rc_controls.h's ROLL/PITCH/YAW/THROTTLE
+// enum (0/1/2/3, canonical/internal order) - rxPiOverrideReadRawRc() below is
+// called with `chan` = rawChannel = rxConfig()->rcmap[channel] (see rx/rx.c
+// readRxChannelsApplyRanges()), i.e. a *wire* position, not a canonical index.
+// For the default "AETR1234" rc_map, canonical YAW(2)/THROTTLE(3) map to wire
+// positions 3/2 respectively - the opposite order - so indexing this array
+// with ROLL/PITCH/YAW/THROTTLE would silently swap the yaw and throttle
+// override values on any FC using that default map.
+//
+// mspFrame[] (rx/msp.c) sidesteps this by being wire-order to begin with: the
+// host always sends MSP_SET_RAW_RC as roll/pitch/throttle/yaw, which is
+// exactly "AETR" wire order, and rxMspFrameReceive() copies it in verbatim
+// with no permutation. This array mirrors that same convention instead of
+// rc_controls.h's, since it's read the same way (rawChannel-indexed).
+enum {
+    PI_OVERRIDE_WIRE_ROLL = 0,
+    PI_OVERRIDE_WIRE_PITCH = 1,
+    PI_OVERRIDE_WIRE_THROTTLE = 2,
+    PI_OVERRIDE_WIRE_YAW = 3,
+};
+
 static uint16_t piOverrideFrame[4];
 
 void rxPiOverrideFrameReceive(uint16_t roll, uint16_t pitch, uint16_t yaw, uint16_t throttle)
 {
-    piOverrideFrame[ROLL] = roll;
-    piOverrideFrame[PITCH] = pitch;
-    piOverrideFrame[YAW] = yaw;
-    piOverrideFrame[THROTTLE] = throttle;
+    piOverrideFrame[PI_OVERRIDE_WIRE_ROLL] = roll;
+    piOverrideFrame[PI_OVERRIDE_WIRE_PITCH] = pitch;
+    piOverrideFrame[PI_OVERRIDE_WIRE_THROTTLE] = throttle;
+    piOverrideFrame[PI_OVERRIDE_WIRE_YAW] = yaw;
 }
 
 uint16_t rxPiOverrideReadRawRc(const rxRuntimeState_t *rxRuntimeState, const rxConfig_t *rxConfig, uint8_t chan)

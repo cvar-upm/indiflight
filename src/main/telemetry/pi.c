@@ -328,6 +328,8 @@ void processPiUplink(void)
                 rxPiOverrideFrameReceive(piMsgRcOverrideRx->roll, piMsgRcOverrideRx->pitch,
                     piMsgRcOverrideRx->yaw, piMsgRcOverrideRx->throttle);
             }
+#else
+            UNUSED(msgId);
 #endif
         }
     }
