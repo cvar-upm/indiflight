@@ -223,6 +223,10 @@
 #undef USE_RX_MSP_OVERRIDE
 #endif
 
+#if !defined(USE_TELEMETRY_PI) && defined(USE_RX_PI_OVERRIDE)
+#undef USE_RX_PI_OVERRIDE
+#endif
+
 /* If either VTX_CONTROL or VTX_COMMON is undefined then remove common code and device drivers */
 #if !defined(USE_VTX_COMMON) || !defined(USE_VTX_CONTROL)
 #undef USE_VTX_COMMON

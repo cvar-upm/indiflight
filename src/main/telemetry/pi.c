@@ -46,6 +46,7 @@
 
 #include "config/config.h"
 #include "fc/rc_controls.h"
+#include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 
 #include "flight/mixer.h"
@@ -61,6 +62,7 @@
 #include "io/ledstrip.h"
 
 #include "rx/rx.h"
+#include "rx/pi_override.h"
 
 #include "sensors/sensors.h"
 #include "sensors/acceleration.h"
@@ -240,6 +242,43 @@ void piSendEkfInputs(void)
 }
 #endif
 
+// FC state summary (armed / PI OVERRIDE active / rx link valid), so a
+// companion computer relying solely on pi-protocol can tell whether the FC is
+// actually obeying its RC_OVERRIDE commands, without needing MSP.
+void piSendStatus(void)
+{
+    piMsgPiStatusTx.time_us = micros();
+
+    uint8_t flags = 0;
+    if (ARMING_FLAG(ARMED)) {
+        flags |= PI_STATUS_FLAG_ARMED;
+    }
+#if defined(USE_RX_PI_OVERRIDE)
+    if (IS_RC_MODE_ACTIVE(BOXPIOVERRIDE)) {
+        flags |= PI_STATUS_FLAG_PI_OVERRIDE_ACTIVE;
+    }
+#endif
+    if (rxAreFlightChannelsValid()) {
+        flags |= PI_STATUS_FLAG_RX_LINK_VALID;
+    }
+    piMsgPiStatusTx.flags = flags;
+
+    piSendMsg(&piMsgPiStatusTx, &serialWriter);
+}
+
+// Pack voltage/current, for voltage-aware thrust map correction without MSP.
+// getBatteryVoltage()/getAmperage() are in 0.01V / 0.01A steps (same source
+// MSP_BATTERY_STATE uses), converted here to plain V/A for the wire.
+void piSendBattery(void)
+{
+    piMsgBatteryTx.time_us = micros();
+    piMsgBatteryTx.voltage = getBatteryVoltage() * 0.01f;
+    piMsgBatteryTx.current = getAmperage() * 0.01f;
+    piMsgBatteryTx.cell_count = getBatteryCellCount();
+
+    piSendMsg(&piMsgBatteryTx, &serialWriter);
+}
+
 void processPiTelemetry(void)
 {
 #ifdef USE_DSHOT_TELEMETRY
@@ -253,6 +292,20 @@ void processPiTelemetry(void)
 #else
     piSendIMU();
 #endif
+
+    // Status/battery don't need EKF_INPUTS' rate - decimated to
+    // TELEMETRY_PI_MAXRATE.
+    static timeUs_t lastStatusUs = 0;
+    static timeUs_t lastBatteryUs = 0;
+    const timeUs_t now = micros();
+    if (cmpTimeUs(now, lastStatusUs) >= TELEMETRY_PI_DELAY) {
+        lastStatusUs = now;
+        piSendStatus();
+    }
+    if (cmpTimeUs(now, lastBatteryUs) >= TELEMETRY_PI_DELAY) {
+        lastBatteryUs = now;
+        piSendBattery();
+    }
 }
 
 pi_parse_states_t p_telem;
@@ -269,7 +322,13 @@ void processPiUplink(void)
 #endif
     if (piPort) {
         while (serialRxBytesWaiting(piPort)) {
-            piParse(&p_telem, serialRead(piPort));
+            uint8_t msgId = piParse(&p_telem, serialRead(piPort));
+#if defined(USE_RX_PI_OVERRIDE)
+            if (msgId == PI_MSG_RC_OVERRIDE_ID && piMsgRcOverrideRx) {
+                rxPiOverrideFrameReceive(piMsgRcOverrideRx->roll, piMsgRcOverrideRx->pitch,
+                    piMsgRcOverrideRx->yaw, piMsgRcOverrideRx->throttle);
+            }
+#endif
         }
     }
 }

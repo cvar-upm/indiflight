@@ -62,6 +62,7 @@ typedef struct rxConfig_s {
     uint8_t srxl2_baud_fast;                   // Select Spektrum SRXL2 fast baud rate
     uint8_t sbus_baud_fast;                    // Select SBus fast baud rate
     uint32_t msp_override_channels_mask;       // Channels to override when the MSP override mode is enabled
+    uint32_t pi_override_channels_mask;        // Channels to override when the PI OVERRIDE mode is enabled
     uint8_t crsf_use_negotiated_baud;          // Use negotiated baud rate for CRSF V3
 } rxConfig_t;
 

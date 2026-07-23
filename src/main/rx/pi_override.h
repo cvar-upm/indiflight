@@ -1,8 +1,4 @@
 /*
- * Configure serial port to parse pi-messages and provide facilities to send
- *
- * Copyright 2023 Till Blaha (Delft University of Technology)
- *
  * This file is part of Indiflight.
  *
  * Indiflight is free software: you can redistribute it and/or modify it
@@ -21,23 +17,16 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
-(C) tblaha 2023
- */
-
 #pragma once
 
-#include <string.h>
+#include "rx/rx.h"
+#include "pg/rx.h"
 
-// PI_STATUS.flags bit layout - keep in sync with pi-protocol/msgs/PI_STATUS.yaml
-// and as2_platform_indiflight's decoder.
-#define PI_STATUS_FLAG_ARMED             (1 << 0)
-#define PI_STATUS_FLAG_PI_OVERRIDE_ACTIVE (1 << 1)
-#define PI_STATUS_FLAG_RX_LINK_VALID     (1 << 2)
+uint16_t rxPiOverrideReadRawRc(const rxRuntimeState_t *rxRuntimeState, const rxConfig_t *rxConfig, uint8_t chan);
 
-void initPiTelemetry(void);
-void handlePiTelemetry(void);
-void checkPiTelemetryState(void);
-
-void freePiTelemetryPort(void);
-void configurePiTelemetryPort(void);
+/*
+ * Called from telemetry/pi.c's uplink dispatch when an RC_OVERRIDE message is
+ * parsed. Stores the roll/pitch/yaw/throttle values for
+ * rxPiOverrideReadRawRc() to read - mirrors rxMspFrameReceive() in rx/msp.c.
+ */
+void rxPiOverrideFrameReceive(uint16_t roll, uint16_t pitch, uint16_t yaw, uint16_t throttle);

@@ -107,7 +107,8 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { .boxId = BOXCATAPULT, .boxName = "CATAPULT", .permanentId = 57 },
     { .boxId = BOXLEARNER, .boxName = "LEARNER", .permanentId = 58 },
     { .boxId = BOXPIDCTL, .boxName = "LEGACY PIDs", .permanentId = 59 },
-    { .boxId = BOXNNCTL, .boxName = "NN CONTROL", .permanentId = 60 }
+    { .boxId = BOXNNCTL, .boxName = "NN CONTROL", .permanentId = 60 },
+    { .boxId = BOXPIOVERRIDE, .boxName = "PI OVERRIDE", .permanentId = 61 }
 };
 
 // mask of enabled IDs, calculated on startup based on enabled features. boxId_e is used as bit index
@@ -354,6 +355,12 @@ void initActiveBoxIds(void)
 #if defined(USE_RX_MSP_OVERRIDE)
     if (rxConfig()->msp_override_channels_mask) {
         BME(BOXMSPOVERRIDE);
+    }
+#endif
+
+#if defined(USE_RX_PI_OVERRIDE)
+    if (rxConfig()->pi_override_channels_mask) {
+        BME(BOXPIOVERRIDE);
     }
 #endif
 
