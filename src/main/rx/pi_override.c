@@ -49,12 +49,24 @@ enum {
 
 static uint16_t piOverrideFrame[4];
 
+// Latches true on the first RC_OVERRIDE ever received, never cleared again -
+// this guards only against engaging BOXPIOVERRIDE before the companion
+// computer has sent a single frame (piOverrideFrame[] otherwise reads as its
+// zero-initialized default, an invalid pulse Betaflight's own RX-failure
+// detection then reacts to). It is NOT a staleness/timeout check: once the
+// first frame lands, this stays true even if RC_OVERRIDE later stops
+// arriving - matches msp_override.c's own lack of a freshness guard there,
+// just closing the specific "activated before the platform ever started"
+// gap instead.
+static bool piOverrideFrameValid = false;
+
 void rxPiOverrideFrameReceive(uint16_t roll, uint16_t pitch, uint16_t yaw, uint16_t throttle)
 {
     piOverrideFrame[PI_OVERRIDE_WIRE_ROLL] = roll;
     piOverrideFrame[PI_OVERRIDE_WIRE_PITCH] = pitch;
     piOverrideFrame[PI_OVERRIDE_WIRE_THROTTLE] = throttle;
     piOverrideFrame[PI_OVERRIDE_WIRE_YAW] = yaw;
+    piOverrideFrameValid = true;
 }
 
 uint16_t rxPiOverrideReadRawRc(const rxRuntimeState_t *rxRuntimeState, const rxConfig_t *rxConfig, uint8_t chan)
@@ -63,7 +75,7 @@ uint16_t rxPiOverrideReadRawRc(const rxRuntimeState_t *rxRuntimeState, const rxC
 
     bool override = chan < 4 && ((1 << chan) & rxConfig->pi_override_channels_mask);
 
-    if (IS_RC_MODE_ACTIVE(BOXPIOVERRIDE) && override) {
+    if (IS_RC_MODE_ACTIVE(BOXPIOVERRIDE) && override && piOverrideFrameValid) {
         return piOverrideFrame[chan];
     } else {
         return rxSample;
