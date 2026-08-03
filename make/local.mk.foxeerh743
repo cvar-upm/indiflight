@@ -1,0 +1,85 @@
+########## TARGET CONFIG
+# Foxeer H743 AIO FC, MPU6000 gyro/acc. Confirmed by the user directly (no CLI dump cross-check
+# yet, unlike the Mobula7/CRAZYBEEF4FR build -- board_name/manufacturer_id below are therefore
+# just cosmetic identification strings, not verified unified-target IDs. That's fine: like the
+# Mobula7, indiflight has no per-board CONFIG=/config.h hydration -- TARGET=STM32H743 only
+# selects the generic H7 MCU build (src/main/target/STM32H743/target.h: all UARTs 1-8 + LPUART1,
+# all SPI 1-6, and every GPIO port marked fully reconfigurable). Board-specific pins are applied
+# at runtime via resource/timer/dma/serial/set CLI commands from your prepared config doc, not
+# compiled in.
+TARGET = STM32H743
+EXTRA_FLAGS = $(EXTRA_FLAGS_CMDLINE) -D'BUILD_KEY=0000000000000000000000000000000' -D'RELEASE_NAME=indiflight-foxeerh743' -D'BOARD_NAME=FOXEERH743' -D'MANUFACTURER_ID=FOXE' -DCLOUD_BUILD -DUSE_GYRO -DUSE_GYRO_SPI_MPU6000 -DUSE_ACC -DUSE_ACC_SPI_MPU6000 -DUSE_SERIALRX -DUSE_SERIALRX_CRSF -DUSE_SERIALRX_GHST -DUSE_SERIALRX_SBUS -DUSE_DSHOT -DUSE_MAX7456 -DUSE_OSD -DUSE_OSD_SD -DUSE_BLACKBOX
+
+########## FURTHER OPTIONS
+# Developer options
+#EXTRA_FLAGS += -DUSE_BENCHMARK -DUSE_STACK_CHECK
+
+# indi config: both controllers compiled in, runtime-switchable via the
+# BOXPIDCTL ("LEGACY PIDs") aux mode (fc/core.c: PID_MODE off -> INDI runs,
+# PID_MODE on -> stock PID runs). PID_MODE defaults to OFF when the switch is
+# unconfigured/inactive, i.e. INDI is what flies if you arm without setting up
+# the switch -- to get PID as the safe/idle default, assign an aux range to
+# BOXPIDCTL (permanent ID 59) that covers your transmitter switch's rest
+# position, so the box is ACTIVE (PID) until you deliberately move the switch
+# to fly INDI. pi-protocol's MOTOR telemetry no longer depends on this flag
+# either way (telemetry/pi.c piSendMotor() reads dshotErpmf[], filtered
+# directly from DSHOT bidir telemetry in drivers/dshot.c, independent of
+# which controller is active) - it works the same with this on or off.
+EXTRA_FLAGS += -DUSE_INDI
+
+# telemetry config: pi-protocol active to stream IMU out (blackbox is still the actual log
+# source). USE_GPS_PI is NOT needed just for this -- it only gates the *uplink* side
+# (EXTERNAL_POSE/VIO_POSE/FAKE_GPS -> EKF/pos_ctl), which we're not using here. Needs a free
+# UART wired out to a host and a `serial <n> 1024 ...` (FUNCTION_TELEMETRY_PI) CLI assignment
+# after flashing -- default baud 921600 if left AUTO. For the 2000Hz IMU-recording goal, that's
+# a runtime rate setting in your config doc, not a compile flag.
+EXTRA_FLAGS += -DUSE_TELEMETRY -DUSE_TELEMETRY_PI
+
+# blackbox onboard flash storage: BLACKBOX_DEVICE_FLASH and BLACKBOX_DEVICE_SERIAL are both
+# just runtime choices (`set blackbox_device = FLASH` or `= SERIAL`) once their respective
+# drivers are compiled in -- USE_BLACKBOX above doesn't imply either backend by itself, and
+# enabling flash here doesn't remove the serial option. "16Mb" almost always means 16*MB* in
+# FPV-board spec-sheet shorthand (i.e. a 128Mbit-class chip), which is the W25Q128FV --
+# by far the most common Betaflight/indiflight blackbox flash chip, so that's the driver
+# below. If it doesn't detect on first boot (check `status` for a flash chip size/id, or
+# CLI `flash_info`), tell me and I'll add other chip drivers to widen the autodetect.
+EXTRA_FLAGS += -DUSE_FLASHFS -DUSE_FLASH_TOOLS -DUSE_FLASH_W25Q128FV
+
+# higher level controllers / estimators -- left off, same call as the Mobula7 build: no GPS/mocap
+# source to fuse for this round of testing. The H743 has a real double-precision FPU (fpv5-d16,
+# unlike the F411's single-precision-only FPU) so USE_LEARNER's clapack/f2c math would run
+# natively here if you ever want it -- but no reason to pay the flash/RAM/CPU cost until you
+# actually have a position source and a reason to exercise EKF/pos_ctl.
+#EXTRA_FLAGS += -DUSE_EKF
+#EXTRA_FLAGS += -DUSE_POS_CTL -DUSE_VEL_CTL
+#EXTRA_FLAGS += -DUSE_TRAJECTORY_TRACKER
+
+# USE_LEARNER, restricted to learner_mode = LEARN_DURING_FLIGHT (1) only: passively fits G1/G2
+# (fxRateDotRls) and per-motor thrust/time-constant (motorRls) online from whatever the *active*
+# controller (PID or INDI, either is fine -- see BOXPIDCTL note above) is already commanding
+# in-flight, and logs the running RLS state to blackbox (motor_N_rls_x[], fx_p/q/r_rls_x[]) for
+# offline comparison against the batch G1/G2 fit. Pulled out of the DANGEROUS block below on
+# purpose: the only place USE_LEARNER ever writes to the motors is indi.c's
+# `indiRun.bypassControl` branch, gated on learningQueryState leaving LEARNING_QUERY_IDLE, which
+# itself only happens when learner_mode includes LEARN_AFTER_CATAPULT/LEARN_AFTER_THROW (learner.c
+# runLearningQueryStateMachine enableConditions). Since USE_CATAPULT/USE_THROW_TO_ARM stay
+# commented out below, catapultState/throwState can never leave *_IDLE (their whole state
+# machines are #ifdef'd out in catapult.c/throw.c), so that branch is unreachable at the source
+# level here -- not just by CLI discipline. Do not set learner_mode above 1 unless USE_CATAPULT
+# or USE_THROW_TO_ARM are also enabled; runs indiController()'s updateLearner() every INDI loop
+# tick regardless of learner_mode, so re-check `tasks` for scheduler overrun after flashing.
+EXTRA_FLAGS += -DUSE_LEARNER
+
+# accelerometer RPM filter: flagged "DANGEROUS" in the indiflight README, but it's just a filter
+# (float math, no allocator/EKF involvement). Requires bidirectional DSHOT for real per-motor RPM
+# feedback -- set at runtime, not compile time: `set dshot_bidir = ON`. USE_RPM_FILTER itself is
+# already forced on for all STM32H7 targets (common_pre.h, unconditional on CLOUD_BUILD, unlike
+# the gyro/OSD/RX flags above), so USE_ACCEL_RPM_FILTER is the only flag needed here.
+EXTRA_FLAGS += -DUSE_ACCEL_RPM_FILTER
+
+# DANGEROUS modes!! not requested for this build. Keep these off: they're what makes
+# USE_LEARNER's query state machine (see above) reachable, driving raw open-loop per-motor
+# commands with only a gyroMax rate abort and no attitude feedback.
+#EXTRA_FLAGS += -DUSE_THROW_TO_ARM -DUSE_THROWING_WITHOUT_POSITION
+#EXTRA_FLAGS += -DUSE_CATAPULT
+#EXTRA_FLAGS += -DUSE_NN_CONTROL

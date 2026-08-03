@@ -1567,12 +1567,24 @@ FAST_CODE void taskMainInnerLoop(timeUs_t currentTimeUs)
     } else
 #endif 
     {
-        // PID 
+        // PID
         subTaskPidController(currentTimeUs);
         subTaskPidMixing(currentTimeUs);
 
         for (int i = 0; i < numMotors; i++)
             motor_normalized[i] = scaleRangef(motor[i], mixerRuntime.motorOutputLow, mixerRuntime.motorOutputHigh, 0., 1.);
+
+#if defined(USE_INDI) && defined(USE_LEARNER)
+        // Run getSetpoints/getAlphaSpBody/getMotorCommands/updateLearner purely
+        // for the RLS fitting side effect. indiRun.d[]/u[] computed here are
+        // intentionally discarded -- motor_normalized[] was already set from
+        // the real PID/mixer output above and must never be overwritten by
+        // this. Only pay the extra CPU cost when the pilot actually engaged
+        // LEARNER_MODE.
+        if (FLIGHT_MODE(LEARNER_MODE)) {
+            indiController(currentTimeUs);
+        }
+#endif
     }
 
 #ifdef USE_INDI

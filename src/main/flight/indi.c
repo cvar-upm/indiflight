@@ -520,6 +520,12 @@ void getMotorCommands(timeUs_t current) {
 //     INDI MODE. Otherwise switching to INDI may result in a super high jerk.
 void indiUpdateActuatorState( float* d ) {
     for (int i=0; i < indiRun.actNum; i++) {
+        // keep d[] truthful to what was actually applied (PID or INDI), not
+        // just whatever getMotorCommands() computed and discarded. learner.c's
+        // motorD[] regressor reads indiRun.d[] directly and must never see a
+        // fictional, never-applied value.
+        indiRun.d[i] = d[i];
+
         float u = indiOutputCurve( &indiRun.lin[i], d[i] );
         indiRun.uState[i] = pt1FilterApply( &indiRun.uLagFilter[i], u );
 
