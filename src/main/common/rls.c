@@ -111,6 +111,15 @@ rls_exit_code_t rlsNewSample(rls_t* rls, float* AT, float* y) {
         }
     }
 
+    // re-symmetrize P by copying upper tri to lower tri, to prevent
+    // floating-point round-off from accumulating asymmetry over many
+    // iterations
+    for (int col = 0; col < rls->n; col++) {
+        for (int row = col+1; row < rls->n; row++) {
+            rls->P[col*rls->n + row] = rls->P[row*rls->n + col];
+        }
+    }
+
     // M = lambda I  +  A P A**T
     // K = P A**T * inv(M)
 
