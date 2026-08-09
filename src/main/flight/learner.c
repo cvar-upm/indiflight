@@ -518,7 +518,10 @@ void updateLearnedParameters(indiProfile_t* indi, positionProfile_t* pos) {
     }
 
     // same for position
-    pos->horz_p = (uint8_t) 10.f 
+    // positionProfileLearned (see below) is only non-NULL when USE_POS_CTL is
+    // compiled in -- guard the dereference, don't assume every build has it.
+#ifdef USE_POS_CTL
+    pos->horz_p = (uint8_t) 10.f
         * learnRun.gains[LEARNER_LOOP_POSITION] * learnRun.gains[LEARNER_LOOP_VELOCITY];
     pos->horz_d = (uint8_t) 10.f * learnRun.gains[LEARNER_LOOP_VELOCITY];
     pos->horz_i = pos->horz_d / 10; // fudge factor: by lack of better option at this point
@@ -539,6 +542,9 @@ void updateLearnedParameters(indiProfile_t* indi, positionProfile_t* pos) {
     // pos->weathervane_p = 0;
     // pos->weathervane_min_v = 200; // cm/s/s
     // pos->use_spf_attenuation = 1;
+#else
+    UNUSED(pos);
+#endif
 
     // indi->manualUseCoordinatedYaw = 1;
     // indi->manualMaxUpwardsSpf = 20; // conservative
@@ -598,6 +604,23 @@ void updateLearnedParameters(indiProfile_t* indi, positionProfile_t* pos) {
     // indi->wlsCondBound = ...;
     // indi->wlsNanLimit = 10;
 
+}
+
+// Snapshot the current RLS fit into the learned profile slot and persist it
+// to EEPROM immediately -- so it survives power-off even if the pilot never
+// touches the CLI, and independent of whether this flight's blackbox log
+// survived (flash full, serial capture dropped, etc.). Called from disarm(),
+// gated on LEARN_DURING_FLIGHT so flights that never engage the learner
+// don't silently overwrite the learned slot with a stale/zero fit.
+// saveConfigAndNotify() blocks for a noticeable EEPROM write -- acceptable
+// here since it only runs once, at disarm, never mid-flight.
+void commitLearnedProfile(void) {
+    if (!(learnerConfig()->mode & LEARN_DURING_FLIGHT)) {
+        return;
+    }
+
+    updateLearnedParameters(indiProfileLearned, positionProfileLearned);
+    saveConfigAndNotify();
 }
 
 void testLearner(void) {

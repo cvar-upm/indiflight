@@ -84,7 +84,7 @@ FAST_DATA_ZERO_INIT indiRuntime_t indiRun;
 #ifdef STM32H7
 FAST_CODE
 #endif
-void indiController(timeUs_t current) {
+void indiController(timeUs_t current, bool authoritative) {
     if (flightModeFlags & ~(CATAPULT_MODE | LEARNER_MODE)) {
         // any flight mode active other than catapult, learner or acro (acro is all off)?
         if ( ((++indiRun.attExecCounter)%indiRun.attRateDenom) == 1 ) {
@@ -102,7 +102,7 @@ void indiController(timeUs_t current) {
     getAlphaSpBody(current);
 
     // allocation and INDI
-    getMotorCommands(current);
+    getMotorCommands(current, authoritative);
 
 #ifdef USE_LEARNER
     // update learner.
@@ -357,7 +357,7 @@ void getAlphaSpBody(timeUs_t current) {
 #ifdef STM32H7
 FAST_CODE
 #endif
-void getMotorCommands(timeUs_t current) {
+void getMotorCommands(timeUs_t current, bool authoritative) {
     UNUSED(current);
 
     static float du[MAXU] = {0.f};
@@ -487,15 +487,23 @@ void getMotorCommands(timeUs_t current) {
 
     //float G1G2_inv[MAXU][MAXV];
     // pseudoinverse or something?
-    if (as_exit_code >= AS_NAN_FOUND_Q) {
-        indiRun.nanCounter++;
-    } else {
-        if (ARMING_FLAG(ARMED))
-            indiRun.nanCounter = 0;
-    }
+    // Only let allocator health affect nanCounter/disarm when this solve is
+    // actually flying the craft. A non-authoritative call (e.g. the
+    // LEARNER_MODE shadow call in fc/core.c, run alongside legacy PID purely
+    // to feed the learner's RLS fit) discards du_as/indiRun.u/d downstream --
+    // its allocator can run cold/ill-conditioned with no bearing on flight
+    // safety, and must not be able to trip a real disarm.
+    if (authoritative) {
+        if (as_exit_code >= AS_NAN_FOUND_Q) {
+            indiRun.nanCounter++;
+        } else {
+            if (ARMING_FLAG(ARMED))
+                indiRun.nanCounter = 0;
+        }
 
-    if (indiRun.nanCounter > indiRun.wlsNanLimit) {
-        disarm(DISARM_REASON_ALLOC_FAILURE);
+        if (indiRun.nanCounter > indiRun.wlsNanLimit) {
+            disarm(DISARM_REASON_ALLOC_FAILURE);
+        }
     }
 
     // du = Ginv * dv and then constrain between 0 and 1

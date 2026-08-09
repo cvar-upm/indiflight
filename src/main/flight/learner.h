@@ -108,6 +108,7 @@ void testLearner(void);
 void updateLearner(timeUs_t current);
 void updateGains(void);
 void updateLearnedParameters(indiProfile_t* indi, positionProfile_t* pos);
+void commitLearnedProfile(void);
 
 // query stuff
 typedef enum query_state_e {

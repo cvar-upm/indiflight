@@ -4904,6 +4904,25 @@ static void cliStatus(const char *cmdName, char *cmdline)
     }
 
     cliPrintf(" (%s%s)", SYSCLKSource[sysclkSource], (sysclkSource < 2) ? "" : PLLSource[pllSource]);
+#elif defined(STM32H7)
+    // This target always runs SYSCLK from PLL1, so the SYSCLK switch status
+    // alone ("PLL1") says nothing about clock accuracy - what actually
+    // matters is what feeds PLL1: the external HSE crystal (~10-50ppm) vs
+    // the internal, uncalibrated HSI RC oscillator (~1% / 10,000ppm,
+    // temperature-sensitive - see indi_experiment clock-offset
+    // investigation notes for why this matters here). Report both.
+    const uint32_t sysclkSrc = __HAL_RCC_GET_SYSCLK_SOURCE();
+    const char *sysclkSourceStr =
+        (sysclkSrc == RCC_SYSCLKSOURCE_STATUS_HSE) ? "HSE" :
+        (sysclkSrc == RCC_SYSCLKSOURCE_STATUS_PLLCLK) ? "PLL1" : "HSI";
+
+    const uint32_t pllSrc = RCC->PLLCKSELR & RCC_PLLCKSELR_PLLSRC;
+    const char *pllSourceStr =
+        (pllSrc == RCC_PLLCKSELR_PLLSRC_HSE) ? "-HSE" :
+        (pllSrc == RCC_PLLCKSELR_PLLSRC_CSI) ? "-CSI" : "-HSI";
+
+    cliPrintf(" (%s%s)", sysclkSourceStr,
+        (sysclkSrc == RCC_SYSCLKSOURCE_STATUS_PLLCLK) ? pllSourceStr : "");
 #endif
 
 #ifdef USE_ADC_INTERNAL

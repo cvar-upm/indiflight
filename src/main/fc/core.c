@@ -493,6 +493,13 @@ void disarm(flightLogDisarmReason_e reason)
         DISABLE_ARMING_FLAG(ARMED);
         lastDisarmTimeUs = micros();
 
+#ifdef USE_LEARNER
+        // commit the RLS fit into the learned indi profile and save it to
+        // EEPROM, so it survives power-off without a manual CLI `save`, and
+        // regardless of whether this flight's blackbox log made it off the FC.
+        commitLearnedProfile();
+#endif
+
 #ifdef USE_OSD
         if (IS_RC_MODE_ACTIVE(BOXFLIPOVERAFTERCRASH) || isLaunchControlActive()) {
             osdSuppressStats(true);
@@ -1559,7 +1566,7 @@ FAST_CODE void taskMainInnerLoop(timeUs_t currentTimeUs)
 #endif
 #ifdef USE_INDI
     if (!FLIGHT_MODE(PID_MODE)) {
-        indiController(currentTimeUs);
+        indiController(currentTimeUs, true);   // authoritative: this output actually flies the craft
 
         for (int i = 0; i < numMotors; i++)
             motor_normalized[i] = constrainf(indiRun.d[i], 0., 1.);
@@ -1580,9 +1587,11 @@ FAST_CODE void taskMainInnerLoop(timeUs_t currentTimeUs)
         // intentionally discarded -- motor_normalized[] was already set from
         // the real PID/mixer output above and must never be overwritten by
         // this. Only pay the extra CPU cost when the pilot actually engaged
-        // LEARNER_MODE.
+        // LEARNER_MODE. Not authoritative: this allocator solve never flies
+        // the craft, so its NaN/health state must not be able to disarm
+        // (see indi.c getMotorCommands()) -- only the real INDI call above does.
         if (FLIGHT_MODE(LEARNER_MODE)) {
-            indiController(currentTimeUs);
+            indiController(currentTimeUs, false);
         }
 #endif
     }

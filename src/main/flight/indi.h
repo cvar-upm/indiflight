@@ -202,7 +202,7 @@ PG_DECLARE_ARRAY(indiProfile_t, INDI_PROFILE_COUNT, indiProfiles);
 
 extern indiRuntime_t indiRun;
 
-void indiController(timeUs_t current);
+void indiController(timeUs_t current, bool authoritative);
 void updateLinearization(actLin_t* lin, float k);
 float indiLinearization(actLin_t* lin, float in);
 float indiOutputCurve(actLin_t* lin, float in);
@@ -211,5 +211,5 @@ float getYawWithoutSingularity(void);
 fp_vector_t coordinatedYaw(float yaw);
 void getSetpoints(timeUs_t current);
 void getAlphaSpBody(timeUs_t current);
-void getMotorCommands(timeUs_t current);
+void getMotorCommands(timeUs_t current, bool authoritative);
 void indiUpdateActuatorState( float* motor_normalized );
