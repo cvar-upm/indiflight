@@ -61,7 +61,7 @@ learning_query_state_t learningQueryState = LEARNING_QUERY_IDLE;
 #error "must use learner with USE_INDI"
 #endif
 
-PG_REGISTER_WITH_RESET_TEMPLATE(learnerConfig_t, learnerConfig, PG_LEARNER_CONFIG, 1);
+PG_REGISTER_WITH_RESET_TEMPLATE(learnerConfig_t, learnerConfig, PG_LEARNER_CONFIG, 2);
 PG_RESET_TEMPLATE(learnerConfig_t, learnerConfig, 
     .mode = (uint8_t) LEARN_AFTER_CATAPULT,
     .numAct = 4,
@@ -81,7 +81,9 @@ PG_RESET_TEMPLATE(learnerConfig_t, learnerConfig,
     .zetaPosition = 80,
     .applyIndiProfileAfterQuery = false,
     .applyPositionProfileAfterQuery = false,
-    .applyHoverRotation = false
+    .applyHoverRotation = false,
+    .initFromProfileAct = false,
+    .initFromProfileFx = false
 );
 
 // extern
@@ -161,6 +163,42 @@ void initLearner(void) {
         biquadFilterInitLPF(&motorOmegaFilter[act], learnerConfig()->motorFiltHz, gyro.targetLooptime);
         biquadFilterInitLPF(&motorDFilter[act], learnerConfig()->motorFiltHz, gyro.targetLooptime);
         biquadFilterInitLPF(&motorSqrtDFilter[act], learnerConfig()->motorFiltHz, gyro.targetLooptime);
+    }
+
+    // Seed the RLS filters from the profile that's already active, rather
+    // than starting from zero -- useful when the goal is refining a
+    // known-approximate profile rather than learning one from scratch.
+    // These are the exact inverses of updateLearnedParameters()'s read-out
+    // formulas below; only .X (state) is touched, never .P (covariance),
+    // which rlsParallelInit() above already set correctly.
+    if (learnerConfig()->initFromProfileAct || learnerConfig()->initFromProfileFx) {
+        const indiProfile_t *p = indiProfiles(systemConfig()->indiProfileIndex);
+        for (int act = 0; act < learnerConfig()->numAct; act++) {
+            float maxOmega = 2.f * M_PIf / 60.f * p->actMaxRpm[act];
+            float isq = 1.f / sq(maxOmega);
+
+            if (learnerConfig()->initFromProfileAct) {
+                float k = 0.01f * p->actNonlinearity[act];
+                motorRls[act].X[0] = 1e-3f * k * maxOmega;
+                motorRls[act].X[1] = 1e-3f * (1.f - k) * maxOmega;
+                motorRls[act].X[2] = 0.f;
+                motorRls[act].X[3] = 1e-2f * (float) p->actTimeConstMs[act];
+            }
+
+            if (learnerConfig()->initFromProfileFx) {
+                fxSpfRls.X[0 * fxSpfRls.n + act] = 1e4f * isq * p->actG1_fx[act];
+                fxSpfRls.X[1 * fxSpfRls.n + act] = 1e4f * isq * p->actG1_fy[act];
+                fxSpfRls.X[2 * fxSpfRls.n + act] = 1e4f * isq * p->actG1_fz[act];
+
+                fxRateDotRls.X[0 * fxRateDotRls.n + act] = 1e4f * isq * p->actG1_roll[act];
+                fxRateDotRls.X[1 * fxRateDotRls.n + act] = 1e4f * isq * p->actG1_pitch[act];
+                fxRateDotRls.X[2 * fxRateDotRls.n + act] = 1e4f * isq * p->actG1_yaw[act];
+
+                fxRateDotRls.X[0 * fxRateDotRls.n + (fxRateDotRls.n >> 1) + act] = 1e-2f * p->actG2_roll[act];
+                fxRateDotRls.X[1 * fxRateDotRls.n + (fxRateDotRls.n >> 1) + act] = 1e-2f * p->actG2_pitch[act];
+                fxRateDotRls.X[2 * fxRateDotRls.n + (fxRateDotRls.n >> 1) + act] = 1e-2f * p->actG2_yaw[act];
+            }
+        }
     }
 }
 
