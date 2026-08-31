@@ -52,6 +52,7 @@ typedef struct learnerConfig_s {
     uint8_t actLimit;
     uint8_t applyIndiProfileAfterQuery;
     uint8_t applyPositionProfileAfterQuery;
+    uint8_t applyHoverRotation;
 } learnerConfig_t;
 
 PG_DECLARE(learnerConfig_t, learnerConfig);
