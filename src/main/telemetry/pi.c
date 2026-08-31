@@ -76,6 +76,8 @@
 #include "pi-protocol.h"
 #include "pi-messages.h"
 
+#include "common/time.h"
+
 #ifdef USE_CLI_DEBUG_PRINT
 #include "cli/cli_debug_print.h"
 #endif
@@ -310,6 +312,23 @@ void processPiTelemetry(void)
 
 pi_parse_states_t p_telem;
 
+#define PI_RTC_MIN_UNIX_SEC 1735689600  // 2025-01-01, sanity floor
+static void piSetRtcFromHost(uint64_t host_ns)
+{
+#ifdef USE_RTC_TIME
+    const int32_t secs = (int32_t)(host_ns / 1000000000ull);
+    if (secs < PI_RTC_MIN_UNIX_SEC) {
+        return;
+    }
+
+    const uint16_t millis = (uint16_t)((host_ns % 1000000000ull) / 1000000ull);
+    rtcTime_t t = rtcTimeMake(secs, millis);
+    rtcSet(&t);
+#else
+    UNUSED(host_ns);
+#endif
+}
+
 void processPiUplink(void)
 {
 #ifdef PI_BETAFLIGHT_DEBUG
@@ -331,6 +350,17 @@ void processPiUplink(void)
 #else
             UNUSED(msgId);
 #endif
+            if (msgId == PI_MSG_TIMESYNC_ID && piMsgTimesyncRx) {
+                // Answered here rather than from a send path: any delay
+                // added between the two stamps is offset error for the host.
+                piMsgTimesyncTx.seq = piMsgTimesyncRx->seq;
+                piMsgTimesyncTx.host_ns = piMsgTimesyncRx->host_ns;
+                piMsgTimesyncTx.fc_time_us = micros();
+                if (piPort) {
+                    piSendMsg(&piMsgTimesyncTx, &serialWriter);
+                }
+                piSetRtcFromHost(piMsgTimesyncRx->host_ns);
+            }
         }
     }
 }
