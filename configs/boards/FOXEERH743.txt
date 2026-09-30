@@ -1,0 +1,116 @@
+# This file contains build flags and default settings for the Foxeer H743 board
+# CLI settings split from a2rl-docs/season3/indiflight-config/
+# BTFL_cli_backup_20260910_113210_FOXEERH743.txt (diff all of the real unit)
+
+###############
+# BUILD FLAGS #
+###############
+
+## ----- Basic info
+#define TARGET=STM32H743
+#define BOARD_NAME=FOXEERH743
+#define MANUFACTURER_ID=FOXE
+#define BUILD_KEY=00000000000000000000000000000000
+#define RELEASE_NAME=indiflight-foxeerh743
+
+## ----- Board peripheral hardware
+## MPU6000 and ICM42688P both: Foxeer has shipped both on this board
+#define USE_GYRO
+#define USE_GYRO_SPI_MPU6000
+#define USE_GYRO_SPI_ICM42688P
+#define USE_ACC
+#define USE_ACC_SPI_MPU6000
+#define USE_ACC_SPI_ICM42688P
+#define USE_BARO
+#define USE_BARO_DPS310
+#define USE_FLASH
+#define USE_FLASH_W25Q128FV
+#define USE_MAX7456
+
+
+##########################
+# BOARD DEFAULT SETTINGS #
+##########################
+
+defaults nosave
+
+resource BEEPER 1 D02
+resource MOTOR 1 B04
+resource MOTOR 2 B05
+resource MOTOR 3 B00
+resource MOTOR 4 B01
+resource MOTOR 5 D12
+resource MOTOR 6 D13
+resource MOTOR 7 C08
+resource MOTOR 8 C09
+resource SERIAL_TX 1 A09
+resource SERIAL_TX 2 A02
+resource SERIAL_TX 3 B10
+resource SERIAL_TX 4 A00
+resource SERIAL_TX 6 C06
+resource SERIAL_TX 7 E08
+resource SERIAL_TX 8 E01
+resource SERIAL_RX 1 A10
+resource SERIAL_RX 2 A03
+resource SERIAL_RX 3 B11
+resource SERIAL_RX 4 A01
+resource SERIAL_RX 6 C07
+resource SERIAL_RX 7 E07
+resource SERIAL_RX 8 E00
+resource I2C_SCL 1 B08
+resource I2C_SDA 1 B09
+resource LED 1 C13
+resource SPI_SCK 1 A05
+resource SPI_SCK 2 B13
+resource SPI_SCK 3 C10
+resource SPI_MISO 1 A06
+resource SPI_MISO 2 B14
+resource SPI_MISO 3 C11
+resource SPI_MOSI 1 A07
+resource SPI_MOSI 2 B15
+resource SPI_MOSI 3 C12
+resource ADC_BATT 1 C03
+resource ADC_RSSI 1 C05
+resource ADC_CURR 1 C02
+resource FLASH_CS 1 A15
+resource OSD_CS 1 A04
+resource GYRO_EXTI 1 D00
+resource GYRO_CS 1 B12
+timer A08 AF1
+timer B03 AF1
+timer B00 AF2
+timer B01 AF2
+timer B04 AF2
+timer B05 AF2
+timer D12 AF2
+timer D13 AF2
+timer C08 AF3
+timer C09 AF3
+timer E05 AF4
+timer E06 AF4
+dma ADC 1 8
+dma ADC 2 9
+dma ADC 3 10
+dma TIMUP 1 0
+dma TIMUP 3 0
+dma TIMUP 4 0
+dma TIMUP 5 0
+dma TIMUP 8 0
+dma pin A08 0
+dma pin B03 0
+dma pin B00 0
+dma pin B01 0
+dma pin B04 0
+dma pin B05 0
+dma pin D12 6
+dma pin D13 7
+dma pin C08 2
+dma pin C09 3
+set current_meter = ADC
+set battery_meter = ADC
+set ibata_scale = 100
+set beeper_inversion = ON
+set beeper_od = OFF
+set max7456_spi_bus = 1
+set flash_spi_bus = 3
+set gyro_1_spibus = 2

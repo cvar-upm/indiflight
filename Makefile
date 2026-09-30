@@ -86,6 +86,10 @@ TARGET = $(shell grep '^#define TARGET=' configs/boards/$(BOARD).txt | cut -f2- 
 endif
 endif
 
+# link the CLI settings of the BOARD and PROFILE files into the firmware as
+# custom defaults, applied with the CLI command `defaults`
+EMBED_DEFAULTS ?= no
+
 PROFILE ?=
 ifeq ($(PROFILE),)
 PROFILE_OPTIONS =
@@ -361,6 +365,16 @@ TARGET_OBJS     = $(addsuffix .o,$(addprefix $(TARGET_OBJ_DIR)/,$(basename $(SRC
 TARGET_DEPS     = $(addsuffix .d,$(addprefix $(TARGET_OBJ_DIR)/,$(basename $(SRC))))
 TARGET_MAP      = $(OBJECT_DIR)/$(FORKNAME)_$(TARGET_NAME).map
 
+ifeq ($(EMBED_DEFAULTS),yes)
+CUSTOM_DEFAULTS_SOURCES = $(if $(BOARD),configs/boards/$(BOARD).txt) $(if $(PROFILE),configs/profiles/$(PROFILE).txt)
+ifeq ($(strip $(CUSTOM_DEFAULTS_SOURCES)),)
+$(error EMBED_DEFAULTS=yes needs BOARD and/or PROFILE)
+endif
+CUSTOM_DEFAULTS_TXT = $(TARGET_OBJ_DIR)/custom_defaults.txt
+CUSTOM_DEFAULTS_OBJ = $(TARGET_OBJ_DIR)/custom_defaults.o
+TARGET_FLAGS += -DUSE_CUSTOM_DEFAULTS
+endif
+
 TARGET_EXST_HASH_SECTION_FILE = $(TARGET_OBJ_DIR)/exst_hash_section.bin
 
 TARGET_EF_HASH      := $(shell echo -n "$(CFLAGS)" | openssl dgst -md5 | awk '{print $$2;}')
@@ -445,6 +459,21 @@ $(TARGET_ELF): $(TARGET_OBJS) $(LD_SCRIPT) $(LD_SCRIPTS)
 	@echo "Linking $(TARGET_NAME)" "$(STDOUT)"
 	$(V1) $(CROSS_CC) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
 	$(V1) $(SIZE) $(TARGET_ELF)
+
+ifeq ($(EMBED_DEFAULTS),yes)
+$(TARGET_ELF): $(CUSTOM_DEFAULTS_OBJ)
+
+# regenerated every build, but only rewritten when BOARD/PROFILE content changed
+$(CUSTOM_DEFAULTS_TXT): FORCE
+	$(V1) mkdir -p $(dir $@)
+	$(V1) python3 $(ROOT)/support/scripts/makeCustomDefaults.py --target $(TARGET) $@ $(CUSTOM_DEFAULTS_SOURCES)
+
+$(CUSTOM_DEFAULTS_OBJ): $(CUSTOM_DEFAULTS_TXT)
+	@echo "%% $(notdir $<)" "$(STDOUT)"
+	$(V1) printf '.section .custom_defaults,"a"\n.incbin "%s"\n.byte 0\n' $< | $(CROSS_CC) -c $(ARCH_FLAGS) -x assembler -o $@ -
+
+FORCE:
+endif
 
 $(TARGET_SO) : $(TARGET_OBJS)
 	@echo "Creating shared library"
