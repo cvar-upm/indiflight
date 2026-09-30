@@ -36,6 +36,10 @@
 #define USE_LEARNER
 ## #define USE_NN_CONTROL
 
+## pilot takes over ONLY by switching POSITION CONTROL off, never by moving the
+## sticks (flight/pos_ctl.c)
+#define DISABLE_POS_CTL_STICK_TAKEOVER
+
 
 ################################################
 # CRAFT SETTINGS (formerly known as "profile") #
