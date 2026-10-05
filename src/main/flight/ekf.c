@@ -330,9 +330,9 @@ void updateEkf(timeUs_t currentTimeUs) {
 
 	// PREDICTION STEP
     // FRD frame's, which we have now everywhere in INDIFlight
-	ekf_U[0] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCafterRpm[0];
-	ekf_U[1] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCafterRpm[1];
-	ekf_U[2] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCafterRpm[2];
+	ekf_U[0] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCf[0];
+	ekf_U[1] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCf[1];
+	ekf_U[2] = GRAVITYf * ((float) acc.dev.acc_1G_rec) * acc.accADCf[2];
 	ekf_U[3] = DEGREES_TO_RADIANS( gyro.gyroADCafterRpm[0] );
 	ekf_U[4] = DEGREES_TO_RADIANS( gyro.gyroADCafterRpm[1] );
 	ekf_U[5] = DEGREES_TO_RADIANS( gyro.gyroADCafterRpm[2] );
@@ -381,10 +381,15 @@ void updateEkf(timeUs_t currentTimeUs) {
         use_quat &= posMeasNed.quat_valid;
         use_quat &= (posMeasNed.mode & LOCAL_POS_MEAS_USE_QUAT) != 0;
 
-        ekf_Z[3] = (use_quat) * posMeasNed.quat.w;
-        ekf_Z[4] = (use_quat) * posMeasNed.quat.x;
-        ekf_Z[5] = (use_quat) * posMeasNed.quat.y;
-        ekf_Z[6] = (use_quat) * posMeasNed.quat.z;
+        // Gate the quaternion rows instead of measuring a null quaternion: at zero gain
+        // they contribute nothing, while (0,0,0,0) is an attitude the filter would fuse
+        ekf_set_use_quat(use_quat);
+        if (use_quat) {
+            ekf_Z[3] = posMeasNed.quat.w;
+            ekf_Z[4] = posMeasNed.quat.x;
+            ekf_Z[5] = posMeasNed.quat.y;
+            ekf_Z[6] = posMeasNed.quat.z;
+        }
 
 		ekfSetMeasNoise(
 			posMeasNed.mode & LOCAL_POS_MEAS_USE_POS,
@@ -408,6 +413,14 @@ void updateEkf(timeUs_t currentTimeUs) {
 	}
 
     float *ekf_X = ekf_get_X();
+
+  // Avoid infinite values  
+		for (int i = 0; i < N_STATES; i++) {
+        if (!isFiniteFloat(ekf_X[i])) {
+            forceDeinitEkf();
+            return;
+        }
+    }
 
     // update position
     posEstNed = (fp_vector_t) { .V = {ekf_X[0], ekf_X[1], ekf_X[2]} };
