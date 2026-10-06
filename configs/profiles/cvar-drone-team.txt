@@ -36,9 +36,9 @@
 #define USE_LEARNER
 ## #define USE_NN_CONTROL
 
-## pilot takes over ONLY by switching POSITION CONTROL off, never by moving the
-## sticks (flight/pos_ctl.c)
-#define DISABLE_POS_CTL_STICK_TAKEOVER
+## stick takeover in offboard (flight/pos_ctl.c): 0 never, 1 only in emergency
+## hover, 2 always, in every setpoint mode
+#define STICK_TAKEOVER_MODE=1
 
 
 ################################################

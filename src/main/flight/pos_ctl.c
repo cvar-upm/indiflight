@@ -32,6 +32,8 @@
 #include "common/maths.h"
 #include "fc/runtime_config.h"
 #include "fc/rc.h"
+#include "fc/rc_modes.h"
+#include "rx/rx.h"
 #include "pg/pg_ids.h"
 #include "config/config.h"
 #include "flight/indi.h"
@@ -158,9 +160,56 @@ void clearManualTakeover(void) {
     setSticksReference();
 }
 
+static bool emerg_latched = false;
+static bool emerg_request = false;
+static bool emerg_takeover = false;
+static bool emerg_switch_prev = false;
+
+void requestEmergHover(void) {
+    emerg_request = ARMING_FLAG(ARMED);
+}
+
+bool isEmergHoverLatched(void) {
+    return emerg_latched;
+}
+
+static void enterEmergHold(void) {
+    manual_takeover = false;
+    emerg_takeover = false;
+    setSticksReference();
+    posSpNed.mode = LOCAL_POS_SP_POSITION;
+#ifdef USE_TRAJECTORY_TRACKER
+    if (isActiveTrajectoryTracker()) {
+        stopTrajectoryTracker();
+    }
+#endif
+    posArrestMotion();
+}
+
+static void updateEmergHover(void) {
+    const bool emergSwitch = IS_RC_MODE_ACTIVE(BOXEMERGHOVER);
+    if (!ARMING_FLAG(ARMED)) {
+        emerg_latched = false;
+        emerg_takeover = false;
+    } else if (!emerg_latched) {
+        if (emerg_request || (emergSwitch && FLIGHT_MODE(POSITION_MODE))) {
+            emerg_latched = true;
+            enterEmergHold();
+        }
+    } else if (!FLIGHT_MODE(POSITION_MODE) || (emerg_switch_prev && !emergSwitch)) {
+        enterEmergHold();
+    } else if (emergSwitch && !emerg_switch_prev) {
+        setSticksReference();
+    }
+    emerg_request = false;
+    emerg_switch_prev = emergSwitch;
+}
+
 void updatePosCtl(timeUs_t current) {
     timeDelta_t timeInDeadreckoning = cmpTimeUs(current, posMeasNed.time_us);
     static bool latch_descend = false;
+
+    updateEmergHover();
 
     // the integrator is only meaningful within one setpoint interpretation
     static uint8_t last_sp_mode = LOCAL_POS_SP_POSITION;
@@ -170,18 +219,8 @@ void updatePosCtl(timeUs_t current) {
         resetIterms();
     }
 
-    if (sp_mode >= LOCAL_POS_SP_ATTITUDE) {
-        if (cmpTimeUs(current, posSpNed.time_us) < SETPOINT_TIMEOUT_US) {
-            posGetOffboardAttitudeSp();
-            return;
-        }
-        // Stale, and vec_a no longer means a position: fall back to levelling
-        posSpNed.mode = LOCAL_POS_SP_POSITION;
-        posSpNed.valid = false;
-    }
-
-#ifndef DISABLE_POS_CTL_STICK_TAKEOVER
-    // -DDISABLE_POS_CTL_STICK_TAKEOVER (profile build flag) compiles this
+#if STICK_TAKEOVER_MODE == STICK_TAKEOVER_ALWAYS
+    // Any other STICK_TAKEOVER_MODE (profile build flag) compiles this
     // block out, so moving the sticks while POSITION/VELOCITY mode is engaged no
     // longer latches manual_takeover. Control returns to the pilot ONLY on a
     // BOXOFFBOARDCTL switch-off (fc/core.c DISABLE_FLIGHT_MODE(POSITION_MODE)). manual_takeover
@@ -190,7 +229,7 @@ void updatePosCtl(timeUs_t current) {
     // PI_STATUS keeps OFFBOARD_CTL_ACTIVE asserted the whole time the mode is on. The
     // link-loss failsafe is unaffected: a stale setpoint still trips the
     // (!posSpNed.valid && !manual_takeover) panic-descend guard right below.
-    if (!manual_takeover && ARMING_FLAG(ARMED)
+    if (!emerg_latched && !manual_takeover && ARMING_FLAG(ARMED)
             && FLIGHT_MODE(POSITION_MODE | VELOCITY_MODE) && haveSticksMoved()) {
         manual_takeover = true;
         posSpNed.valid = false;
@@ -200,7 +239,25 @@ void updatePosCtl(timeUs_t current) {
         }
 #endif
     }
-#endif // DISABLE_POS_CTL_STICK_TAKEOVER
+#endif // STICK_TAKEOVER_MODE
+
+#if STICK_TAKEOVER_MODE != STICK_TAKEOVER_OFF
+    if (emerg_latched && !emerg_takeover && IS_RC_MODE_ACTIVE(BOXEMERGHOVER)
+            && FLIGHT_MODE(POSITION_MODE) && haveSticksMoved()
+            && fabsf(rcCommand[THROTTLE] - PWM_RANGE_MIDDLE) < EMERG_HOVER_TAKEOVER_THROTTLE_BAND) {
+        emerg_takeover = true;
+    }
+#endif
+
+    if (sp_mode >= LOCAL_POS_SP_ATTITUDE && !manual_takeover) {
+        if (cmpTimeUs(current, posSpNed.time_us) < SETPOINT_TIMEOUT_US) {
+            posGetOffboardAttitudeSp();
+            return;
+        }
+        // Stale, and vec_a no longer means a position: fall back to levelling
+        posSpNed.mode = LOCAL_POS_SP_POSITION;
+        posSpNed.valid = false;
+    }
 
     if ( latch_descend
             || (!posSpNed.valid && !manual_takeover) || !isConvergedEkf()
@@ -250,8 +307,12 @@ void updatePosCtl(timeUs_t current) {
         if (!isActiveTrajectoryTracker() || manual_takeover)
 #endif
         {
-            if (manual_takeover) {
-                posGetVelSpNedFromSticks();
+            if (manual_takeover || emerg_takeover) {
+                if (emerg_takeover) {
+                    posGetVelSpNedFromSticks(EMERG_HOVER_MAX_V_HORZ, EMERG_HOVER_MAX_V_VERT, EMERG_HOVER_MAX_V_VERT);
+                } else {
+                    posGetVelSpNedFromSticks(posRuntime.horz_max_v, posRuntime.vert_max_v_up, posRuntime.vert_max_v_down);
+                }
 
                 // yaw stuff
                 posSpNed.trackPsi = false;
@@ -381,10 +442,10 @@ void posGetVelSpNedFromPosSp(void) {
     }
 }
 
-void posGetVelSpNedFromSticks(void) {
+void posGetVelSpNedFromSticks(float maxHorzV, float maxUpV, float maxDownV) {
     // get velocity setpoints from sticks in body frame
-    float velSpBodyX = -getRcDeflection(PITCH) * posRuntime.horz_max_v;
-    float velSpBodyY = getRcDeflection(ROLL) * posRuntime.horz_max_v;
+    float velSpBodyX = -getRcDeflection(PITCH) * maxHorzV;
+    float velSpBodyY = getRcDeflection(ROLL) * maxHorzV;
 
     // use yaw angle to convert to NED frame
     float Psi = getYawWithoutSingularity();
@@ -397,7 +458,7 @@ void posGetVelSpNedFromSticks(void) {
     float normThrottle = (rcCommand[THROTTLE] - 1000.f) * 1e-3f; // 0..1
     normThrottle -= 0.5f; // -0.5 .. +0.5
     normThrottle *= 2.f; // -1 .. +1
-    posSpNed.vel.V.Z = (normThrottle) > 0 ? (-normThrottle * posRuntime.vert_max_v_up) : (-normThrottle * posRuntime.vert_max_v_down);
+    posSpNed.vel.V.Z = (normThrottle) > 0 ? (-normThrottle * maxUpV) : (-normThrottle * maxDownV);
 }
 
 void posGetAccSpNed(timeUs_t current) {
