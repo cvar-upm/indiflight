@@ -184,10 +184,10 @@ void updatePosCtl(timeUs_t current) {
     // -DDISABLE_POS_CTL_STICK_TAKEOVER (profile build flag) compiles this
     // block out, so moving the sticks while POSITION/VELOCITY mode is engaged no
     // longer latches manual_takeover. Control returns to the pilot ONLY on a
-    // BOXPOSCTL switch-off (fc/core.c DISABLE_FLIGHT_MODE(POSITION_MODE)). manual_takeover
+    // BOXOFFBOARDCTL switch-off (fc/core.c DISABLE_FLIGHT_MODE(POSITION_MODE)). manual_takeover
     // then stays false for the life of the flight, so every `if (manual_takeover)`
     // branch below is dead and isManualTakeover() (telemetry/pi.c) stays false, i.e.
-    // PI_STATUS keeps POS_CTL_ACTIVE asserted the whole time the mode is on. The
+    // PI_STATUS keeps OFFBOARD_CTL_ACTIVE asserted the whole time the mode is on. The
     // link-loss failsafe is unaffected: a stale setpoint still trips the
     // (!posSpNed.valid && !manual_takeover) panic-descend guard right below.
     if (!manual_takeover && ARMING_FLAG(ARMED)

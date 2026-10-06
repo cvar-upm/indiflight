@@ -271,7 +271,7 @@ void piSendStatus(void)
             && !isManualTakeover()
 #endif
        ) {
-        flags |= PI_STATUS_FLAG_POS_CTL_ACTIVE;
+        flags |= PI_STATUS_FLAG_OFFBOARD_CTL_ACTIVE;
     }
 #if defined(USE_RX_PI_OVERRIDE)
     if (IS_RC_MODE_ACTIVE(BOXPIOVERRIDE)) {

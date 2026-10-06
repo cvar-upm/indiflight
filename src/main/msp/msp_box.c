@@ -103,7 +103,7 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { .boxId = BOXBEEPERMUTE, .boxName = "BEEPER MUTE", .permanentId = 52},
     { .boxId = BOXREADY, .boxName = "READY", .permanentId = 53},
     { .boxId = BOXVELCTL, .boxName = "VELOCITY CONTROL", .permanentId = 54},
-    { .boxId = BOXPOSCTL, .boxName = "POSITION CONTROL", .permanentId = 55},
+    { .boxId = BOXOFFBOARDCTL, .boxName = "OFFBOARD CONTROL", .permanentId = 55},
     { .boxId = BOXTHROWTOARM, .boxName = "THROWTOARM", .permanentId = 56 },
     { .boxId = BOXCATAPULT, .boxName = "CATAPULT", .permanentId = 57 },
     { .boxId = BOXLEARNER, .boxName = "LEARNER", .permanentId = 58 },
@@ -369,7 +369,7 @@ void initActiveBoxIds(void)
     BME(BOXSTICKCOMMANDDISABLE);
     BME(BOXREADY);
 #ifdef USE_LOCAL_POSITION
-    BME(BOXPOSCTL);
+    BME(BOXOFFBOARDCTL);
 #endif
 #ifdef USE_VEL_CTL
     BME(BOXVELCTL);

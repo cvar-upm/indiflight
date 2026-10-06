@@ -121,7 +121,7 @@ extern flightModeFlags_e flightModeFlags;
    [BOXFAILSAFE]    = LOG2(FAILSAFE_MODE),               \
    [BOXGPSRESCUE]   = LOG2(GPS_RESCUE_MODE),             \
    [BOXVELCTL]      = LOG2(VELOCITY_MODE),               \
-   [BOXPOSCTL]      = LOG2(POSITION_MODE),               \
+   [BOXOFFBOARDCTL] = LOG2(POSITION_MODE),               \
    [BOXCATAPULT]    = LOG2(CATAPULT_MODE),               \
    [BOXLEARNER]     = LOG2(LEARNER_MODE),                \
    [BOXPIDCTL]      = LOG2(PID_MODE),                   \
