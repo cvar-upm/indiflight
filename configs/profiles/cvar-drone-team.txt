@@ -78,8 +78,8 @@ aux 0 0 0 1600 2100 0 0
 aux 1 1 1 900 1600 0 0
 aux 2 27 2 1200 2100 0 0
 aux 3 55 1 1750 2100 0 0
-aux 4 59 4 1700 2100 0 0
-aux 5 45 5 1600 2100 0 0
+aux 4 59 4 1775 2100 0 0
+aux 5 63 3 1800 2100 0 0
 set gyro_lpf1_static_hz = 100
 set gyro_lpf2_static_hz = 200
 set gyro_lpf1_dyn_min_hz = 100
@@ -91,11 +91,15 @@ set rc_smoothing_auto_factor = 25
 set rc_smoothing_auto_factor_throttle = 25
 set serialrx_provider = GHST
 set pi_override_channels_mask = 15
-set blackbox_sample_rate = 1/2
+set blackbox_sample_rate = 1/4
 set blackbox_device = SPIFLASH
-set blackbox_disable_bat = ON
+set blackbox_disable_pids = ON
+set blackbox_disable_bat = OFF
+set blackbox_disable_rssi = ON
+set blackbox_disable_debug = ON
 set blackbox_disable_alt = ON
-set blackbox_disable_pos = ON
+set blackbox_disable_pos = OFF
+set blackbox_disable_learner = ON
 set dshot_idle_value = 200
 set dshot_bidir = ON
 set motor_pwm_protocol = DSHOT600
@@ -161,31 +165,25 @@ set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
 set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
 set indi_act_nonlinearity = 40,40,40,40,50,50,50,50
-set indi_act_max = 50,50,50,50,100,100,100,100
-set indi_act_g1_fz = -2200,-2200,-2200,-2200,0,0,0,0
-set indi_act_g1_roll = -14000,-11000,14000,11000,0,0,0,0
-set indi_act_g1_pitch = -11000,11000,-11000,11000,0,0,0,0
-set indi_act_g1_yaw = -640,640,640,-640,0,0,0,0
-set indi_act_g2_yaw = -175,175,175,-175,0,0,0,0
-indiprofile 1
-set indi_attitude_gains = 1500,1500,500
-set indi_rate_gains = 230,230,180
-set indi_attitude_max_yaw_rate = 500
-set indi_max_rate_setpoint = 1500,1500,1500
-set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
-set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
-set indi_act_nonlinearity = 40,40,40,40,50,50,50,50
 set indi_act_max = 80,80,80,80,100,100,100,100
 set indi_act_g1_fz = -1530,-1530,-1530,-1530,0,0,0,0
 set indi_act_g1_roll = -4925,-3731,4757,3780,0,0,0,0
 set indi_act_g1_pitch = -2023,2428,-1994,2536,0,0,0,0
 set indi_act_g1_yaw = -160,160,160,-160,0,0,0,0
 set indi_act_g2_yaw = -32,32,32,-32,0,0,0,0
+indiprofile 1
 indiprofile 2
 positionprofile 0
+set position_horizontal_p = 40
+set position_horizontal_i = 1
+set position_horizontal_d = 18
+set position_max_horizontal_speed = 500
+set position_vertical_p = 90
+set position_vertical_i = 3
+set position_max_upwards_accel = 1000
 positionprofile 1
 positionprofile 2
 profile 0
 rateprofile 0
-indiprofile 1
+indiprofile 0
 positionprofile 0
