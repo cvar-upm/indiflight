@@ -1,6 +1,7 @@
 [submodule "lib/main/pi-protocol"]
 	path = lib/main/pi-protocol
 	url = https://github.com/cvar-upm/pi-protocol.git
+	branch = cvar_dev
 [submodule "lib/main/ActiveSetCtlAlloc"]
 	path = lib/main/ActiveSetCtlAlloc
 	url = https://www.github.com/tudelft/ActiveSetCtlAlloc.git
