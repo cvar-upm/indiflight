@@ -1,6 +1,7 @@
 # This file contains build flags and configuration for cvar-drone-team, the Foxeer H743 quad
 # CLI settings split from a2rl-docs/season3/indiflight-config/
-# BTFL_cli_backup_20260910_113210_FOXEERH743.txt (diff all of the real unit)
+# BTFL_cli_backup_20260910_113210_FOXEERH743.txt (diff all of the real unit),
+# then updated from CVAR_LATEST_FOXEERH743.txt (full dump of the real unit, 2026-09-30)
 
 ###############
 # BUILD FLAGS #
@@ -74,15 +75,17 @@ beeper -CAM_CONNECTION_OPEN
 beeper -CAM_CONNECTION_CLOSE
 beeper -RC_SMOOTHING_INIT_FAIL
 aux 0 0 0 1600 2100 0 0
-aux 1 1 2 900 1600 0 0
-aux 2 27 1 1200 2100 0 0
-aux 3 55 2 1750 2100 0 0
-aux 4 58 5 1700 2100 0 0
-aux 5 59 4 900 1800 0 0
-aux 6 45 3 1600 2100 0 0
-aux 7 53 6 1800 2100 0 0
+aux 1 1 1 900 1600 0 0
+aux 2 27 2 1200 2100 0 0
+aux 3 55 1 1750 2100 0 0
+aux 4 59 4 1700 2100 0 0
+aux 5 45 5 1600 2100 0 0
+set gyro_lpf1_static_hz = 100
+set gyro_lpf2_static_hz = 200
+set gyro_lpf1_dyn_min_hz = 100
+set gyro_lpf1_dyn_max_hz = 200
 set dyn_notch_q = 500
-set acc_calibration = -67,41,275,1
+set acc_calibration = -285,-237,187,1
 set min_check = 1020
 set rc_smoothing_auto_factor = 25
 set rc_smoothing_auto_factor_throttle = 25
@@ -172,7 +175,7 @@ set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
 set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
 set indi_act_nonlinearity = 40,40,40,40,50,50,50,50
-set indi_act_max = 50,50,50,50,100,100,100,100
+set indi_act_max = 80,80,80,80,100,100,100,100
 set indi_act_g1_fz = -1530,-1530,-1530,-1530,0,0,0,0
 set indi_act_g1_roll = -4925,-3731,4757,3780,0,0,0,0
 set indi_act_g1_pitch = -2023,2428,-1994,2536,0,0,0,0
