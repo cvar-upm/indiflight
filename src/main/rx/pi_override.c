@@ -25,6 +25,7 @@
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "drivers/time.h"
+#include "flight/pos_ctl.h"
 
 // Wire order, as in mspFrame[] of rx/msp.c, not the canonical order of
 // fc/rc_controls.h: this array is indexed by rcmap[] positions, and the default
@@ -64,7 +65,11 @@ uint16_t rxPiOverrideReadRawRc(const rxRuntimeState_t *rxRuntimeState, const rxC
 
     // The two offboard languages are exclusive, and position control outranks
     if (IS_RC_MODE_ACTIVE(BOXPIOVERRIDE) && override && fresh
-            && !FLIGHT_MODE(POSITION_MODE)) {
+            && !FLIGHT_MODE(POSITION_MODE)
+#ifdef USE_LOCAL_POSITION
+            && !isEmergHoverLatched()
+#endif
+            ) {
         return piOverrideFrame[chan];
     } else {
         return rxSample;

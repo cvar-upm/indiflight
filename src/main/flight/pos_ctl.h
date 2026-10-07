@@ -94,6 +94,20 @@ void posCtlInit(void);
 // Age past which a velocity, attitude or acro setpoint stops being tracked
 #define SETPOINT_TIMEOUT_US            200000   // 0.2 sec
 
+#define EMERG_HOVER_MAX_V_HORZ                 1.0f     // m/s
+#define EMERG_HOVER_MAX_V_VERT                 0.5f     // m/s
+#define EMERG_HOVER_TAKEOVER_THROTTLE_BAND     50.f     // us
+
+#define STICK_TAKEOVER_OFF                     0
+#define STICK_TAKEOVER_EMERG_HOVER             1
+#define STICK_TAKEOVER_ALWAYS                  2
+#ifndef STICK_TAKEOVER_MODE
+#define STICK_TAKEOVER_MODE                    STICK_TAKEOVER_ALWAYS
+#endif
+#if STICK_TAKEOVER_MODE < STICK_TAKEOVER_OFF || STICK_TAKEOVER_MODE > STICK_TAKEOVER_ALWAYS
+#error "STICK_TAKEOVER_MODE must be 0, 1 or 2"
+#endif
+
 extern positionRuntime_t posRuntime;
 void initPositionRuntime();
 void changePositionProfile(uint8_t profileIndex);
@@ -110,7 +124,9 @@ void posArrestZMotionOnly();
 void updatePosCtl(timeUs_t current);
 bool isManualTakeover(void);
 void clearManualTakeover(void);
+void requestEmergHover(void);
+bool isEmergHoverLatched(void);
 void posGetVelSpNedFromPosSp(void);
-void posGetVelSpNedFromSticks(void);
+void posGetVelSpNedFromSticks(float maxHorzV, float maxUpV, float maxDownV);
 void posGetAccSpNed(timeUs_t current);
 void posGetAttSpNedAndSpfSpBody(timeUs_t current);

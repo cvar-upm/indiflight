@@ -286,6 +286,11 @@ void piSendStatus(void)
         flags |= PI_STATUS_FLAG_EKF_CONVERGED;
     }
 #endif
+#ifdef USE_LOCAL_POSITION
+    if (isEmergHoverLatched()) {
+        flags |= PI_STATUS_FLAG_EMERG_HOVER;
+    }
+#endif
     piMsgPiStatusTx.flags = flags;
 
     if (piPort) {
@@ -370,6 +375,14 @@ static void processNewMessage(uint8_t msgId) {
             break;
         }
         case PI_MSG_SETPOINT_ID: {
+            if ((piMsgSetpointRx->mode & LOCAL_POS_SP_MODE_MASK) == LOCAL_POS_SP_HOLD) {
+                requestEmergHover();
+                break;
+            }
+            if (isEmergHoverLatched()) {
+                break;
+            }
+
             local_pos_sp_ned_t sp = {0};
             sp.mode = piMsgSetpointRx->mode;
 

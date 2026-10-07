@@ -42,6 +42,7 @@ void configurePiTelemetryPort(void);
 #define PI_STATUS_FLAG_RX_LINK_VALID      (1 << 2)
 #define PI_STATUS_FLAG_EKF_CONVERGED      (1 << 3)
 #define PI_STATUS_FLAG_OFFBOARD_CTL_ACTIVE (1 << 4)
+#define PI_STATUS_FLAG_EMERG_HOVER        (1 << 5)
 
 void piSendEkfInputs(void);
 void piSendIMU(void);

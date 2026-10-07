@@ -321,7 +321,7 @@ void updateArmingStatus(void)
             hadRx = haveRx;
         }
 
-        if (IS_RC_MODE_ACTIVE(BOXFAILSAFE)) {
+        if (IS_RC_MODE_ACTIVE(BOXFAILSAFE) || IS_RC_MODE_ACTIVE(BOXEMERGHOVER)) {
             setArmingDisabled(ARMING_DISABLED_BOXFAILSAFE);
         } else {
             unsetArmingDisabled(ARMING_DISABLED_BOXFAILSAFE);
@@ -1104,7 +1104,7 @@ void processRxModes(timeUs_t currentTimeUs)
             }
 #endif
             // only switch if converged ekf, unless the reference does not need it
-            if (!localPosSpNeedsEkf() || isConvergedEkf()) {
+            if ((!localPosSpNeedsEkf() || isConvergedEkf()) && !IS_RC_MODE_ACTIVE(BOXEMERGHOVER)) {
                 if (ARMING_FLAG(ARMED) && localPosSpNeedsEkf()) {
                     setLocalPosSpHere();
                 }
