@@ -21,6 +21,7 @@
 ## ----- FPV features: LED and onscreen display
 #define USE_OSD
 #define USE_OSD_SD
+#define USE_VTX              ## VTX control + vtxtable; CLOUD_BUILD leaves it out (common_pre.h)
 
 ## ----- Outputs and logging
 #define USE_DSHOT
@@ -117,6 +118,25 @@ set osd_pilot_name_pos = 2070
 set osd_warnings_pos = 14740
 set osd_stat_bitmask = 13740
 set osd_displayport_device = MSP
+
+# vtx: from old_configs/BTFL_cli_backup_CVAR-A2RL-02_20260716_191757_FOXEERH743.txt (Betaflight 4.4, same quad)
+# controlled over MSP on the `serial 6` (UART7) port above, function 131073 = MSP + VTX_MSP
+vtxtable bands 6
+vtxtable channels 8
+vtxtable band 1 BOSCAM_A A CUSTOM     0    0    0    0    0    0    0    0
+vtxtable band 2 BOSCAM_B B CUSTOM     0    0    0    0    0    0    0    0
+vtxtable band 3 BOSCAM_E E CUSTOM  5705    0    0    0    0    0    0    0
+vtxtable band 4 FATSHARK F CUSTOM  5740 5760    0 5800    0    0    0    0
+vtxtable band 5 RACEBAND R CUSTOM  5658 5695 5732 5769 5806 5843 5880 5917
+vtxtable band 6 LOWBAND  L CUSTOM     0    0    0    0    0    0    0    0
+vtxtable powerlevels 3
+vtxtable powervalues 14 23 0
+vtxtable powerlabels 25 200 0
+set vtx_band = 5
+set vtx_channel = 2
+set vtx_power = 1
+set vtx_freq = 5695
+
 set osd_canvas_height = 13
 set gyro_1_sensor_align = CW0FLIP
 set gyro_1_align_pitch = 1800
