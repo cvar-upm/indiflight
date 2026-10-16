@@ -111,6 +111,7 @@ typedef struct mspPort_s {
     uint8_t checksum1;
     uint8_t checksum2;
     bool sharedWithTelemetry;
+    bool mspOnly;
     mspDescriptor_t descriptor;
 } mspPort_t;
 
@@ -118,6 +119,7 @@ void mspSerialInit(void);
 bool mspSerialWaiting(void);
 void mspSerialProcess(mspEvaluateNonMspData_e evaluateNonMspData, mspProcessCommandFnPtr mspProcessCommandFn, mspProcessReplyFnPtr mspProcessReplyFn);
 void mspSerialAllocatePorts(void);
+bool mspSerialAdoptPort(struct serialPort_s *serialPort);
 void mspSerialReleasePortIfAllocated(struct serialPort_s *serialPort);
 void mspSerialReleaseSharedTelemetryPorts(void);
 mspDescriptor_t getMspSerialPortDescriptor(const uint8_t portIdentifier);

@@ -65,6 +65,8 @@
 #include "io/ledstrip.h"
 #include "io/local_pos.h"
 
+#include "msp/msp_serial.h"
+
 #include "rx/rx.h"
 #include "rx/pi_override.h"
 
@@ -93,6 +95,15 @@ static const serialPortConfig_t *portConfig;
 
 static bool piTelemetryEnabled =  false;
 static portSharing_e piPortSharing;
+
+// MSPv2 MSP_DATAFLASH_SUMMARY request, sent by the host to take the port over as MSP
+static const uint8_t piMspHandoverRequest[] = { '$', 'X', '<', 0x00, 0x46, 0x00, 0x00, 0x00, 0x8C };
+// Uplink silence (ms) that tells a closed host apart from one sending TIMESYNC at 1 Hz
+#define PI_MSP_HANDOVER_SILENCE_MS 3000
+
+static timeMs_t piLastUplinkMs = 0;
+static uint8_t piMspHandoverMatched = 0;
+static bool piPortHandedToMsp = false;
 
 // wrapper for serialWrite
 static void serialWriter(uint8_t byte) { serialWrite(piPort, byte); }
@@ -157,6 +168,10 @@ static void piSetRtcFromHost(uint64_t host_ns)
 
 void checkPiTelemetryState(void)
 {
+    if (piPortHandedToMsp) {
+        return;
+    }
+
     if (portConfig && telemetryCheckRxPortShared(portConfig, rxRuntimeState.serialrxProvider)) {
         if (!piTelemetryEnabled && telemetrySharedPort != NULL) {
             piPort = telemetrySharedPort;
@@ -419,6 +434,41 @@ static void processNewMessage(uint8_t msgId) {
 
 pi_parse_states_t p_telem;
 
+static bool piMatchMspHandoverRequest(uint8_t c)
+{
+    // '$' only opens the request, so a mismatch restarts the match from this byte
+    if (c != piMspHandoverRequest[piMspHandoverMatched]) {
+        piMspHandoverMatched = (c == piMspHandoverRequest[0]) ? 1 : 0;
+        return false;
+    }
+
+    if (++piMspHandoverMatched < sizeof(piMspHandoverRequest)) {
+        return false;
+    }
+
+    piMspHandoverMatched = 0;
+    return true;
+}
+
+// Only to a host that has stopped talking pi-protocol, and never in flight
+static bool piMspHandoverAllowed(void)
+{
+    return !ARMING_FLAG(ARMED) && (millis() - piLastUplinkMs >= PI_MSP_HANDOVER_SILENCE_MS);
+}
+
+// One way: only a reboot brings pi-protocol back, and until then the FC cannot arm
+static void piHandPortToMsp(void)
+{
+    if (!mspSerialAdoptPort(piPort)) {
+        return;
+    }
+
+    setRebootRequired();
+    piPort = NULL;
+    piTelemetryEnabled = false;
+    piPortHandedToMsp = true;
+}
+
 void processPiUplink(void)
 {
     if (!piPort) {
@@ -426,9 +476,16 @@ void processPiUplink(void)
     }
 
     while (serialRxBytesWaiting(piPort)) {
-        uint8_t msgId = piParse(&p_telem, serialRead(piPort));
+        const uint8_t c = serialRead(piPort);
+        uint8_t msgId = piParse(&p_telem, c);
         if (msgId != PI_MSG_NONE_ID) {
+            piLastUplinkMs = millis();
             processNewMessage(msgId);
+        }
+
+        if (piMatchMspHandoverRequest(c) && piMspHandoverAllowed()) {
+            piHandPortToMsp();
+            return;
         }
     }
 }
