@@ -83,6 +83,20 @@ void mspSerialAllocatePorts(void)
     }
 }
 
+// Serve only MSP frames on a port another function already opened, at its baud rate
+bool mspSerialAdoptPort(serialPort_t *serialPort)
+{
+    for (uint8_t portIndex = 0; portIndex < MAX_MSP_PORT_COUNT; portIndex++) {
+        mspPort_t *mspPort = &mspPorts[portIndex];
+        if (!mspPort->port) {
+            resetMspPort(mspPort, serialPort, false);
+            mspPort->mspOnly = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 void mspSerialReleasePortIfAllocated(serialPort_t *serialPort)
 {
     for (uint8_t portIndex = 0; portIndex < MAX_MSP_PORT_COUNT; portIndex++) {
@@ -527,7 +541,7 @@ void mspSerialProcess(mspEvaluateNonMspData_e evaluateNonMspData, mspProcessComm
                 const uint8_t c = serialRead(mspPort->port);
                 const bool consumed = mspSerialProcessReceivedData(mspPort, c);
 
-                if (!consumed && evaluateNonMspData == MSP_EVALUATE_NON_MSP_DATA) {
+                if (!consumed && evaluateNonMspData == MSP_EVALUATE_NON_MSP_DATA && !mspPort->mspOnly) {
                     mspEvaluateNonMspData(mspPort, c);
                 }
 
