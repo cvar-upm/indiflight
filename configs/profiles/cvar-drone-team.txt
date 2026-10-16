@@ -111,13 +111,18 @@ set vbat_warning_cell_voltage = 340
 set serial_update_rate_hz = 500
 set small_angle = 180
 set simplified_gyro_filter_multiplier = 40
-set osd_vbat_pos = 2455
-set osd_rssi_pos = 2461
-set osd_craft_name_pos = 2435
-set osd_pilot_name_pos = 2070
-set osd_warnings_pos = 14740
+# osd: from dump_with_osd.txt (2026-10-15), only the values that differ from the firmware
+# defaults (osd/osd.c pgResetFn_osdConfig/_osdElementConfig); every other element is hidden
+set osd_warn_bitmask = 8191
+set osd_vbat_pos = 2456
+set osd_rssi_pos = 2424
+set osd_flymode_pos = 2048
+set osd_craft_name_pos = 2089
+set osd_pilot_name_pos = 2059
+set osd_warnings_pos = 14730
 set osd_stat_bitmask = 13740
 set osd_displayport_device = MSP
+set osd_canvas_height = 13
 
 # vtx: from old_configs/BTFL_cli_backup_CVAR-A2RL-02_20260716_191757_FOXEERH743.txt (Betaflight 4.4, same quad)
 # controlled over MSP on the `serial 6` (UART7) port above, function 131073 = MSP + VTX_MSP
@@ -137,7 +142,6 @@ set vtx_channel = 2
 set vtx_power = 1
 set vtx_freq = 5695
 
-set osd_canvas_height = 13
 set gyro_1_sensor_align = CW0FLIP
 set gyro_1_align_pitch = 1800
 set craft_name = cvar-drone-team
