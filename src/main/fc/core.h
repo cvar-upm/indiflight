@@ -58,6 +58,7 @@ typedef enum {
     DISARM_REASON_ALLOC_FAILURE     = 9,
     DISARM_REASON_KEYBOARD          = 10,
     DISARM_REASON_GEOFENCE          = 11,
+    DISARM_REASON_EMERG_LAND        = 12,
 #if defined(UNIT_TEST) || defined(SITL) || defined(MOCKUP)
     DISARM_REASON_SYSTEM            = 255,
 #endif

@@ -98,6 +98,14 @@ void posCtlInit(void);
 #define EMERG_HOVER_MAX_V_VERT                 0.5f     // m/s
 #define EMERG_HOVER_TAKEOVER_THROTTLE_BAND     50.f     // us
 
+// Emergency land: descent once the emergency hover has arrested the motion, and
+// the touchdown that disarms. Touchdown is the descent stalling: commanded down
+// at EMERG_LAND_DESCENT_V, the vehicle sinks slower than EMERG_LAND_TOUCHDOWN_V
+// for EMERG_LAND_TOUCHDOWN_US.
+#define EMERG_LAND_DESCENT_V                   0.5f     // m/s
+#define EMERG_LAND_TOUCHDOWN_V                 0.15f    // m/s
+#define EMERG_LAND_TOUCHDOWN_US                1000000  // 1 sec
+
 #define STICK_TAKEOVER_OFF                     0
 #define STICK_TAKEOVER_EMERG_HOVER             1
 #define STICK_TAKEOVER_ALWAYS                  2
@@ -126,6 +134,8 @@ bool isManualTakeover(void);
 void clearManualTakeover(void);
 void requestEmergHover(void);
 bool isEmergHoverLatched(void);
+void requestEmergLand(void);
+bool isEmergLandLatched(void);
 void posGetVelSpNedFromPosSp(void);
 void posGetVelSpNedFromSticks(float maxHorzV, float maxUpV, float maxDownV);
 void posGetAccSpNed(timeUs_t current);

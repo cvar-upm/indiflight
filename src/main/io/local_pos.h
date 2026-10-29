@@ -50,6 +50,7 @@ typedef enum {
 #define LOCAL_POS_SP_ATTITUDE    3
 #define LOCAL_POS_SP_ACRO        4
 #define LOCAL_POS_SP_HOLD        5
+#define LOCAL_POS_SP_HOLD_LAND   6
 #define LOCAL_POS_SP_YAW_RATE    (1 << 3)
 
 typedef struct __local_pos_ned_t {

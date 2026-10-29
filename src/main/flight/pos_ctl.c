@@ -30,6 +30,7 @@
 #include "flight/ahrs.h"
 #include "flight/ekf.h"
 #include "common/maths.h"
+#include "fc/core.h"
 #include "fc/runtime_config.h"
 #include "fc/rc.h"
 #include "fc/rc_modes.h"
@@ -164,6 +165,11 @@ static bool emerg_latched = false;
 static bool emerg_request = false;
 static bool emerg_takeover = false;
 static bool emerg_switch_prev = false;
+// The emergency ends in a landing, see msgs/SETPOINT.yaml HOLD_LAND
+static bool emerg_land = false;
+static bool emerg_land_request = false;
+static timeUs_t emerg_land_stall_since = 0;
+static bool emerg_land_stalled = false;
 
 void requestEmergHover(void) {
     emerg_request = ARMING_FLAG(ARMED);
@@ -171,6 +177,15 @@ void requestEmergHover(void) {
 
 bool isEmergHoverLatched(void) {
     return emerg_latched;
+}
+
+void requestEmergLand(void) {
+    emerg_request = ARMING_FLAG(ARMED);
+    emerg_land_request = ARMING_FLAG(ARMED);
+}
+
+bool isEmergLandLatched(void) {
+    return emerg_latched && emerg_land;
 }
 
 static void enterEmergHold(void) {
@@ -191,18 +206,51 @@ static void updateEmergHover(void) {
     if (!ARMING_FLAG(ARMED)) {
         emerg_latched = false;
         emerg_takeover = false;
+        emerg_land = false;
     } else if (!emerg_latched) {
         if (emerg_request || (emergSwitch && FLIGHT_MODE(POSITION_MODE))) {
             emerg_latched = true;
+            emerg_land = emerg_land_request;
+            emerg_land_stalled = false;
             enterEmergHold();
         }
+    } else if (emerg_land_request && !emerg_land && !emerg_takeover) {
+        // a HOLD becomes a landing; the arrest already under way carries on
+        emerg_land = true;
+        emerg_land_stalled = false;
     } else if (!FLIGHT_MODE(POSITION_MODE) || (emerg_switch_prev && !emergSwitch)) {
         enterEmergHold();
     } else if (emergSwitch && !emerg_switch_prev) {
         setSticksReference();
     }
     emerg_request = false;
+    emerg_land_request = false;
     emerg_switch_prev = emergSwitch;
+}
+
+// Descend where the emergency hover stopped, and disarm on touchdown.
+static void posEmergLand(timeUs_t current) {
+    // hold x and y where the arrest latched them, and let z follow the vehicle down
+    posSpNed.pos.V.Z = posEstNed.V.Z;
+    posGetVelSpNedFromPosSp();
+    posSpNed.vel.V.Z = EMERG_LAND_DESCENT_V; // NED: down
+    posSpNed.trackPsi = false;
+    rateSpBodyFromPos.V.X = 0;
+    rateSpBodyFromPos.V.Y = 0;
+    rateSpBodyFromPos.V.Z = 0;
+
+    if (velEstNed.V.Z >= EMERG_LAND_TOUCHDOWN_V) {
+        emerg_land_stalled = false;
+        return;
+    }
+    if (!emerg_land_stalled) {
+        emerg_land_stalled = true;
+        emerg_land_stall_since = current;
+        return;
+    }
+    if (cmpTimeUs(current, emerg_land_stall_since) >= EMERG_LAND_TOUCHDOWN_US) {
+        disarm(DISARM_REASON_EMERG_LAND);
+    }
 }
 
 void updatePosCtl(timeUs_t current) {
@@ -246,6 +294,7 @@ void updatePosCtl(timeUs_t current) {
             && FLIGHT_MODE(POSITION_MODE) && haveSticksMoved()
             && fabsf(rcCommand[THROTTLE] - PWM_RANGE_MIDDLE) < EMERG_HOVER_TAKEOVER_THROTTLE_BAND) {
         emerg_takeover = true;
+        emerg_land = false; // the pilot flies it down, or not
     }
 #endif
 
@@ -344,6 +393,8 @@ void updatePosCtl(timeUs_t current) {
                     posSpNed.time_us = current;
                     resetIterms();
                 }
+            } else if (emerg_latched && emerg_land) {
+                posEmergLand(current);
             } else if ((posSpNed.mode & LOCAL_POS_SP_MODE_MASK) == LOCAL_POS_SP_VELOCITY) {
                 // a velocity setpoint is a standing order, so it expires
                 if (cmpTimeUs(current, posSpNed.time_us) > SETPOINT_TIMEOUT_US) {

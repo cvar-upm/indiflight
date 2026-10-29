@@ -305,6 +305,9 @@ void piSendStatus(void)
     if (isEmergHoverLatched()) {
         flags |= PI_STATUS_FLAG_EMERG_HOVER;
     }
+    if (isEmergLandLatched()) {
+        flags |= PI_STATUS_FLAG_EMERG_LAND;
+    }
 #endif
     piMsgPiStatusTx.flags = flags;
 
@@ -392,6 +395,10 @@ static void processNewMessage(uint8_t msgId) {
         case PI_MSG_SETPOINT_ID: {
             if ((piMsgSetpointRx->mode & LOCAL_POS_SP_MODE_MASK) == LOCAL_POS_SP_HOLD) {
                 requestEmergHover();
+                break;
+            }
+            if ((piMsgSetpointRx->mode & LOCAL_POS_SP_MODE_MASK) == LOCAL_POS_SP_HOLD_LAND) {
+                requestEmergLand();
                 break;
             }
             if (isEmergHoverLatched()) {
