@@ -82,6 +82,8 @@ aux 2 55 1 1750 2100 0 0
 aux 3 45 6 1650 2100 0 0
 aux 4 40 4 1625 2100 0 0
 aux 5 63 3 1800 2100 0 0
+# VTX ON (permanent id 64): AUX3 high = video on. Low = 0mW while disarmed, always on when armed
+aux 6 64 2 1700 2100 0 0
 set gyro_lpf1_static_hz = 100
 set gyro_lpf2_static_hz = 200
 set gyro_lpf1_dyn_min_hz = 100

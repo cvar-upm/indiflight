@@ -2075,7 +2075,13 @@ case MSP_NAME:
             sbufWriteU8(dst, vtxType);
             sbufWriteU8(dst, vtxSettingsConfig()->band);
             sbufWriteU8(dst, vtxSettingsConfig()->channel);
+#ifdef USE_VTX_MSP
+            // The VTX polls this, so it has to carry the 0mW level of the VTX ON
+            // switch too. Other ports get vtx_power, so a configurator save cannot store it
+            sbufWriteU8(dst, isMspVtxDescriptor(srcDesc) ? vtxMspPowerIndexForVtx() : vtxSettingsConfig()->power);
+#else
             sbufWriteU8(dst, vtxSettingsConfig()->power);
+#endif
             sbufWriteU8(dst, (vtxStatus & VTX_STATUS_PIT_MODE) ? 1 : 0);
             sbufWriteU16(dst, vtxSettingsConfig()->freq);
             sbufWriteU8(dst, deviceIsReady);
@@ -3324,7 +3330,15 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             }
 
             if (sbufBytesRemaining(src) >= 2) {
-                vtxSettingsConfigMutable()->power = sbufReadU8(src);
+                const uint8_t newPower = sbufReadU8(src);
+#ifdef USE_VTX_MSP
+                // HDZero (v1.7.0) sends back on boot the power it last read from
+                // us, which with the VTX ON switch off is the 0mW level
+                if (!(isMspVtxDescriptor(srcDesc) && vtxMspSwitchControlled()))
+#endif
+                {
+                    vtxSettingsConfigMutable()->power = newPower;
+                }
                 const uint8_t newPitmode = sbufReadU8(src);
                 if (vtxType != VTXDEV_UNKNOWN) {
                     // Delegate pitmode to vtx directly

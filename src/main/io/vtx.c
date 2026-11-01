@@ -40,6 +40,9 @@
 #include "flight/failsafe.h"
 
 #include "io/vtx_control.h"
+#ifdef USE_VTX_MSP
+#include "io/vtx_msp.h"
+#endif
 
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
@@ -277,6 +280,12 @@ void vtxUpdate(timeUs_t currentTimeUs)
             }
             currentSchedule = (currentSchedule + 1) % VTX_PARAM_COUNT;
         } while (!vtxUpdatePending && currentSchedule != startingSchedule);
+
+#ifdef USE_VTX_MSP
+        // HDZero only enters 0mW when the requested power changes, so it has
+        // to hear about the arm too, or it would ignore the 0mW after disarming
+        vtxUpdatePending |= vtxMspOffStatePending();
+#endif
 
         if (!ARMING_FLAG(ARMED) || vtxUpdatePending) {
             vtxCommonProcess(vtxDevice, currentTimeUs);
