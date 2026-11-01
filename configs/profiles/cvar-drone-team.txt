@@ -78,8 +78,8 @@ beeper -CAM_CONNECTION_CLOSE
 beeper -RC_SMOOTHING_INIT_FAIL
 aux 0 0 0 1600 2100 0 0
 aux 1 1 1 900 1600 0 0
-aux 2 27 2 1200 2100 0 0
-aux 3 55 1 1750 2100 0 0
+aux 2 55 1 1750 2100 0 0
+aux 3 45 6 1650 2100 0 0
 aux 4 40 4 1625 2100 0 0
 aux 5 63 3 1800 2100 0 0
 set gyro_lpf1_static_hz = 100
