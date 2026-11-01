@@ -22,6 +22,7 @@
 #define USE_OSD
 #define USE_OSD_SD
 #define USE_VTX              ## VTX control + vtxtable; CLOUD_BUILD leaves it out (common_pre.h)
+#define USE_PINIO
 
 ## ----- Outputs and logging
 #define USE_DSHOT
@@ -79,7 +80,7 @@ aux 0 0 0 1600 2100 0 0
 aux 1 1 1 900 1600 0 0
 aux 2 27 2 1200 2100 0 0
 aux 3 55 1 1750 2100 0 0
-aux 4 59 4 1775 2100 0 0
+aux 4 40 4 1625 2100 0 0
 aux 5 63 3 1800 2100 0 0
 set gyro_lpf1_static_hz = 100
 set gyro_lpf2_static_hz = 200
@@ -141,6 +142,10 @@ set vtx_band = 5
 set vtx_channel = 2
 set vtx_power = 1
 set vtx_freq = 5695
+
+# led: on/off from an rc switch, PINIO 1 follows the USER1 mode (permanent id 40)
+resource PINIO 1 A08
+set pinio_box = 40,255,255,255
 
 set gyro_1_sensor_align = CW0FLIP
 set gyro_1_align_pitch = 1800
