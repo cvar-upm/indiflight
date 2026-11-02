@@ -50,7 +50,7 @@
 #error "USE_LOCAL_POSITION require the use of USE_EKF"
 #endif
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(positionProfile_t, POSITION_PROFILE_COUNT, positionProfiles, PG_POSITION_PROFILE, 1);
+PG_REGISTER_ARRAY_WITH_RESET_FN(positionProfile_t, POSITION_PROFILE_COUNT, positionProfiles, PG_POSITION_PROFILE, 2);
 
 void pgResetFn_positionProfiles(positionProfile_t *positionProfiles) {
     for (int i = 0; i < POSITION_PROFILE_COUNT; i++) {
@@ -60,6 +60,7 @@ void pgResetFn_positionProfiles(positionProfile_t *positionProfiles) {
         p->horz_d = 40;
         p->horz_max_v = 250;
         p->horz_max_a = 500;
+        p->emerg_horz_max_a = 500;
         p->horz_max_iterm = 500;
         p->max_tilt = 30;
         p->vert_p = 30;
@@ -92,6 +93,7 @@ void initPositionRuntime(void) {
     posRuntime.horz_d = MAX(p->horz_d, 1) * 0.1f;
     posRuntime.horz_max_v = p->horz_max_v * 0.01f;
     posRuntime.horz_max_a = p->horz_max_a * 0.01f; 
+    posRuntime.emerg_horz_max_a = p->emerg_horz_max_a * 0.01f;
     posRuntime.horz_max_iterm = p->horz_max_iterm * 0.01f;
     posRuntime.max_tilt = DEGREES_TO_RADIANS(p->max_tilt);
     posRuntime.vert_p = p->vert_p * 0.1f;
@@ -508,10 +510,14 @@ void posGetAccSpNed(timeUs_t current) {
 
     // limit such that max acceleration likely results in bank angle below 40 deg
     // but log if acceleration saturated, so we can pause error integration
-    accSpXYSaturated = VEC3_XY_LENGTH(accSpNedFromPos) > posRuntime.horz_max_a;
+    // Only the emergency hover's brake may go further, until a pilot takes over or it has stopped
+    const bool emergBraking = emerg_latched && posRuntime.arrest_motion
+            && !emerg_takeover && !manual_takeover;
+    const float horzMaxA = emergBraking ? posRuntime.emerg_horz_max_a : posRuntime.horz_max_a;
+    accSpXYSaturated = VEC3_XY_LENGTH(accSpNedFromPos) > horzMaxA;
     accSpZSaturated = (accSpNedFromPos.V.Z < -posRuntime.vert_max_a_up) || (accSpNedFromPos.V.Z > posRuntime.vert_max_a_down);
 
-    VEC3_CONSTRAIN_XY_LENGTH(accSpNedFromPos, posRuntime.horz_max_a);
+    VEC3_CONSTRAIN_XY_LENGTH(accSpNedFromPos, horzMaxA);
     accSpNedFromPos.V.Z = constrainf(accSpNedFromPos.V.Z, -posRuntime.vert_max_a_up, posRuntime.vert_max_a_down);
 }
 

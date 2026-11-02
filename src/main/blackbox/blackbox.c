@@ -2630,6 +2630,7 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_HORIZONTAL_D, "%d",  posProfile->horz_d);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_MAX_HORIZONTAL_SPEED, "%d",  posProfile->horz_max_v);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_MAX_HORIZONTAL_ACCEL, "%d",  posProfile->horz_max_a);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_EMERG_MAX_HORIZONTAL_ACCEL, "%d",  posProfile->emerg_horz_max_a);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_MAX_TILT, "%d",  posProfile->max_tilt);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_VERTICAL_P, "%d",  posProfile->vert_p);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_POSITION_VERTICAL_I, "%d",  posProfile->vert_i);

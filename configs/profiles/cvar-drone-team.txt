@@ -187,8 +187,9 @@ rateprofile 1
 rateprofile 2
 rateprofile 3
 indiprofile 0
-set indi_attitude_gains = 1500,1500,500
-set indi_rate_gains = 230,230,180
+set indi_attitude_gains = 3850,3850,500
+set indi_rate_gains = 350,350,180
+set indi_attitude_max_tilt_rate = 1500
 set indi_attitude_max_yaw_rate = 500
 set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
@@ -203,10 +204,11 @@ set indi_act_g2_yaw = -32,32,32,-32,0,0,0,0
 indiprofile 1
 indiprofile 2
 positionprofile 0
-set position_horizontal_p = 40
+set position_horizontal_p = 80
 set position_horizontal_i = 1
-set position_horizontal_d = 18
+set position_horizontal_d = 60
 set position_max_horizontal_speed = 500
+set position_emerg_max_horizontal_accel = 3500
 set position_vertical_p = 90
 set position_vertical_i = 3
 set position_max_upwards_accel = 1000
