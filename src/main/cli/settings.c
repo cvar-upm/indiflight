@@ -1325,6 +1325,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_POSITION_HORIZONTAL_D,           VAR_UINT8 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 0, ( 1 << 8 ) - 1 }, PG_POSITION_PROFILE, offsetof(positionProfile_t, horz_d) },
     { PARAM_NAME_POSITION_MAX_HORIZONTAL_SPEED,   VAR_UINT16 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 50, ( 1 << 16 ) - 1 }, PG_POSITION_PROFILE, offsetof(positionProfile_t, horz_max_v) },
     { PARAM_NAME_POSITION_MAX_HORIZONTAL_ACCEL,   VAR_UINT16 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 250, ( 1 << 16 ) - 1  }, PG_POSITION_PROFILE, offsetof(positionProfile_t, horz_max_a) },
+    { PARAM_NAME_POSITION_EMERG_MAX_HORIZONTAL_ACCEL, VAR_UINT16 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 250, ( 1 << 16 ) - 1  }, PG_POSITION_PROFILE, offsetof(positionProfile_t, emerg_horz_max_a) },
     { PARAM_NAME_POSITION_MAX_TILT,               VAR_UINT8 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 0, 180 }, PG_POSITION_PROFILE, offsetof(positionProfile_t, max_tilt) },
     { PARAM_NAME_POSITION_VERTICAL_P,             VAR_UINT8 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 10, ( 1 << 8 ) - 1 }, PG_POSITION_PROFILE, offsetof(positionProfile_t, vert_p) },
     { PARAM_NAME_POSITION_VERTICAL_I,             VAR_UINT8 | PROFILE_POSITION_VALUE, .config.minmaxUnsigned = { 0, ( 1 << 8 ) - 1 }, PG_POSITION_PROFILE, offsetof(positionProfile_t, vert_i) },

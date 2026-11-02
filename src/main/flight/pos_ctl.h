@@ -36,6 +36,7 @@ typedef struct positionProfile_s {
     uint8_t horz_d; // m/s/s per m/s * 10
     uint16_t horz_max_v; // cm/s 
     uint16_t horz_max_a; // cm/s/s  FIXME: are box shaped constraints what we want?
+    uint16_t emerg_horz_max_a; // cm/s/s, replaces horz_max_a while emergency hover arrests motion
     uint8_t max_tilt;   // in automatic flight in deg (0, 180)
     uint8_t vert_p; // m/s/s per m * 10
     uint8_t vert_i; // m/s/s per m/s * s  * 10
@@ -60,6 +61,7 @@ typedef struct positionRuntime_s {
     float horz_d; // m/s/s per m/s
     float horz_max_v; // m/s
     float horz_max_a; // m/s/s
+    float emerg_horz_max_a; // m/s/s
     float max_tilt;   // rad
     float horz_max_iterm; // m/s
     float vert_p; // m/s/s per m

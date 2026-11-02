@@ -178,6 +178,7 @@
 #define PARAM_NAME_POSITION_HORIZONTAL_D "position_horizontal_d"
 #define PARAM_NAME_POSITION_MAX_HORIZONTAL_SPEED "position_max_horizontal_speed"
 #define PARAM_NAME_POSITION_MAX_HORIZONTAL_ACCEL "position_max_horizontal_accel"
+#define PARAM_NAME_POSITION_EMERG_MAX_HORIZONTAL_ACCEL "position_emerg_max_horizontal_accel"
 #define PARAM_NAME_POSITION_MAX_TILT "position_max_tilt"
 #define PARAM_NAME_POSITION_VERTICAL_P "position_vertical_p"
 #define PARAM_NAME_POSITION_VERTICAL_I "position_vertical_i"
