@@ -39,6 +39,7 @@
 #include "drivers/vtx_common.h"
 #include "drivers/vtx_table.h"
 
+#include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "flight/failsafe.h"
 
@@ -66,6 +67,7 @@ static uint8_t mspConfPitMode = 0;
 static bool mspVtxConfigChanged = false;
 static timeUs_t mspVtxLastTimeUs = 0;
 static bool prevLowPowerDisarmedState = false;
+static bool prevForcedOffState = false;
 
 static const vtxVTable_t mspVTable; // forward
 static vtxDevice_t vtxMsp = {
@@ -76,6 +78,9 @@ STATIC_UNIT_TESTED mspVtxStatus_e mspVtxStatus = MSP_VTX_STATUS_OFFLINE;
 static uint8_t mspVtxPortIdentifier = 255;
 
 #define MSP_VTX_REQUEST_PERIOD_US (200 * 1000) // 200ms
+// HDZero v1.7.0 drops pushes that arrive before its startup is done, so the
+// switch state is repeated rather than sent once per change
+#define MSP_VTX_SWITCH_RESEND_PERIOD_US (1000 * 1000)
 
 static bool isCrsfPortConfig(const serialPortConfig_t *portConfig)
 {
@@ -89,14 +94,55 @@ static bool isLowPowerDisarmed(void)
         (vtxSettingsConfig()->lowPowerDisarm == VTX_LOW_POWER_DISARM_UNTIL_FIRST_ARM && !ARMING_FLAG(WAS_EVER_ARMED))));
 }
 
+// 1-based vtxtable index of the level whose power value is 0 (true 0mW on
+// HDZero, unlike pit mode's 0.1mW), 0 if the table has none
+static uint8_t vtxMspOffPowerIndex(void)
+{
+    for (int i = 0; i < vtxTablePowerLevels; i++) {
+        if (vtxTablePowerValues[i] == 0) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
+bool vtxMspSwitchControlled(void)
+{
+    return isModeActivationConditionPresent(BOXVTXON) && vtxMspOffPowerIndex() != 0;
+}
+
+bool vtxMspForcedOff(void)
+{
+    return vtxMspSwitchControlled() && !IS_RC_MODE_ACTIVE(BOXVTXON)
+        && !ARMING_FLAG(ARMED) && !failsafeIsActive();
+}
+
+bool vtxMspOffStatePending(void)
+{
+    return mspVtxStatus == MSP_VTX_STATUS_READY && vtxMspForcedOff() != prevForcedOffState;
+}
+
+uint8_t vtxMspPowerIndexForVtx(void)
+{
+    if (vtxMspForcedOff()) {
+        return vtxMspOffPowerIndex();
+    }
+    return isLowPowerDisarmed() ? 1 : vtxSettingsConfig()->power;
+}
+
+bool isMspVtxDescriptor(const int descriptor)
+{
+#if defined(USE_MSP_OVER_TELEMETRY)
+    return getMspSerialPortDescriptor(mspVtxPortIdentifier) == descriptor || getMspTelemetryDescriptor() == descriptor;
+#else
+    return getMspSerialPortDescriptor(mspVtxPortIdentifier) == descriptor;
+#endif
+}
+
 void setMspVtxDeviceStatusReady(const int descriptor)
 {
     if (mspVtxStatus != MSP_VTX_STATUS_READY && vtxTableConfig()->bands && vtxTableConfig()->channels && vtxTableConfig()->powerLevels) {
-#if defined(USE_MSP_OVER_TELEMETRY)
-        if (getMspSerialPortDescriptor(mspVtxPortIdentifier) == descriptor || getMspTelemetryDescriptor() == descriptor) {
-#else
-        if (getMspSerialPortDescriptor(mspVtxPortIdentifier) == descriptor) {
-#endif
+        if (isMspVtxDescriptor(descriptor)) {
             mspVtxStatus = MSP_VTX_STATUS_READY;
         }
     }
@@ -107,7 +153,7 @@ void prepareMspFrame(uint8_t *mspFrame)
     mspFrame[0] = VTXDEV_MSP;
     mspFrame[1] = vtxSettingsConfig()->band;
     mspFrame[2] = vtxSettingsConfig()->channel;
-    mspFrame[3] = isLowPowerDisarmed() ? 1 : vtxSettingsConfig()->power; // index based
+    mspFrame[3] = vtxMspPowerIndexForVtx(); // index based
     mspFrame[4] = mspConfPitMode;
     mspFrame[5] = vtxSettingsConfig()->freq & 0xFF;
     mspFrame[6] = (vtxSettingsConfig()->freq >> 8) & 0xFF;
@@ -189,6 +235,13 @@ static void vtxMspProcess(vtxDevice_t *vtxDevice, timeUs_t currentTimeUs)
         if (isLowPowerDisarmed() != prevLowPowerDisarmedState) {
             mspVtxConfigChanged = true;
             prevLowPowerDisarmedState = isLowPowerDisarmed();
+        }
+        if (vtxMspForcedOff() != prevForcedOffState) {
+            mspVtxConfigChanged = true;
+            prevForcedOffState = vtxMspForcedOff();
+        }
+        if (vtxMspSwitchControlled() && cmp32(currentTimeUs, mspVtxLastTimeUs) >= MSP_VTX_SWITCH_RESEND_PERIOD_US) {
+            mspVtxConfigChanged = true;
         }
 
         // send an update if stuff has changed with 200ms period

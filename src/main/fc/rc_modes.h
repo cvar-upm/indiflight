@@ -88,6 +88,7 @@ typedef enum {
     BOXREADY,
     BOXPIOVERRIDE,
     BOXEMERGHOVER,
+    BOXVTXON,
     CHECKBOX_ITEM_COUNT
 } boxId_e;
 

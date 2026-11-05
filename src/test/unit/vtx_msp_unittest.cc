@@ -23,12 +23,21 @@
 extern "C" {
     #include "platform.h"
 
+    #include "drivers/vtx_common.h"
+    #include "drivers/vtx_table.h"
+    #include "fc/runtime_config.h"
+    #include "io/serial.h"
     #include "io/vtx.h"
     #include "io/vtx_msp.h"
     #include "pg/vtx_table.h"
 
     static uint8_t mspFrame[15];
     extern mspVtxStatus_e mspVtxStatus;
+
+    static bool vtxOnModeMapped = false;
+    static bool vtxOnModeActive = false;
+    static bool failsafeActive = false;
+    static serialPortConfig_t *findSerialPortConfig_stub_retval;
 }
 
 #include "unittest_macros.h"
@@ -81,6 +90,105 @@ TEST(VtxMspUnitTest, TestVtxMspReady)
     EXPECT_EQ(MSP_VTX_STATUS_READY, mspVtxStatus);
 }
 
+static void setArmed(bool armed)
+{
+    armingFlags = armed ? ARMED : static_cast<armingFlag_e>(0);
+}
+
+class VtxMspSwitchTest : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        vtxSettingsConfigMutable()->power = 1;
+        vtxSettingsConfigMutable()->lowPowerDisarm = VTX_LOW_POWER_DISARM_OFF;
+        vtxTablePowerLevels = 3;
+        vtxTablePowerValues[0] = 14;
+        vtxTablePowerValues[1] = 23;
+        vtxTablePowerValues[2] = 0;
+        vtxOnModeMapped = true;
+        vtxOnModeActive = false;
+        failsafeActive = false;
+        setArmed(false);
+    }
+
+    void TearDown() override
+    {
+        vtxOnModeMapped = false;
+        vtxOnModeActive = false;
+        failsafeActive = false;
+        setArmed(false);
+    }
+};
+
+TEST_F(VtxMspSwitchTest, UnmappedModeLeavesPowerAlone)
+{
+    vtxOnModeMapped = false;
+    EXPECT_FALSE(vtxMspSwitchControlled());
+    EXPECT_FALSE(vtxMspForcedOff());
+    EXPECT_EQ(1, vtxMspPowerIndexForVtx());
+}
+
+TEST_F(VtxMspSwitchTest, SwitchLowDisarmedIsOff)
+{
+    EXPECT_TRUE(vtxMspForcedOff());
+    EXPECT_EQ(3, vtxMspPowerIndexForVtx());
+
+    prepareMspFrame(mspFrame);
+    EXPECT_EQ(3, mspFrame[3]);
+    // the configured power stays, so a save cannot store the 0mW level
+    EXPECT_EQ(1, vtxSettingsConfig()->power);
+}
+
+TEST_F(VtxMspSwitchTest, SwitchHighIsOn)
+{
+    vtxOnModeActive = true;
+    EXPECT_FALSE(vtxMspForcedOff());
+    EXPECT_EQ(1, vtxMspPowerIndexForVtx());
+}
+
+TEST_F(VtxMspSwitchTest, ArmedIsOnWithSwitchLow)
+{
+    setArmed(true);
+    EXPECT_FALSE(vtxMspForcedOff());
+    EXPECT_EQ(1, vtxMspPowerIndexForVtx());
+}
+
+TEST_F(VtxMspSwitchTest, FailsafeIsOnWithSwitchLow)
+{
+    failsafeActive = true;
+    EXPECT_FALSE(vtxMspForcedOff());
+    EXPECT_EQ(1, vtxMspPowerIndexForVtx());
+}
+
+TEST_F(VtxMspSwitchTest, TableWithoutOffLevelIsNeverForcedOff)
+{
+    vtxTablePowerValues[2] = 27;
+    EXPECT_FALSE(vtxMspSwitchControlled());
+    EXPECT_FALSE(vtxMspForcedOff());
+    EXPECT_EQ(1, vtxMspPowerIndexForVtx());
+}
+
+TEST_F(VtxMspSwitchTest, ArmingIsPendingUntilProcessed)
+{
+    serialPortConfig_t portConfig = {};
+    findSerialPortConfig_stub_retval = &portConfig;
+    ASSERT_TRUE(vtxMspInit());
+    ASSERT_NE(nullptr, vtxCommonDevice());
+    mspVtxStatus = MSP_VTX_STATUS_READY;
+
+    vtxCommonProcess(vtxCommonDevice(), 0);
+    EXPECT_FALSE(vtxMspOffStatePending());
+
+    setArmed(true);
+    EXPECT_TRUE(vtxMspOffStatePending());
+
+    vtxCommonProcess(vtxCommonDevice(), 0);
+    EXPECT_FALSE(vtxMspOffStatePending());
+
+    setArmed(false);
+    EXPECT_TRUE(vtxMspOffStatePending());
+}
+
 // STUBS
 
 extern "C" {
@@ -96,14 +204,14 @@ extern "C" {
 
     uint8_t cliMode = 0;
     rxRuntimeState_t rxRuntimeState = rxRuntimeState_t();
-    static serialPortConfig_t *findSerialPortConfig_stub_retval;
 
-    bool IS_RC_MODE_ACTIVE(boxId_e) {return false;}
+    bool IS_RC_MODE_ACTIVE(boxId_e boxId) {return boxId == BOXVTXON && vtxOnModeActive;}
+    bool isModeActivationConditionPresent(boxId_e boxId) {return boxId == BOXVTXON && vtxOnModeMapped;}
     void beeperConfirmationBeeps(uint8_t) {}
     void saveConfigAndNotify(void) {}
     void crsfRxSendTelemetryData(void) {}
     void crsfRxWriteTelemetryData(const void *, int) {}
-    bool failsafeIsActive(void) {return false;}
+    bool failsafeIsActive(void) {return failsafeActive;}
     const serialPortConfig_t *findSerialPortConfig(serialPortFunction_e) {return findSerialPortConfig_stub_retval;}
     bool isRangeActive(uint8_t , const channelRange_t *) {return true;}
     int mspSerialPush(serialPortIdentifier_e, uint8_t, uint8_t *, int, mspDirection_e, mspVersion_e) {return 0;}

@@ -32,4 +32,14 @@ typedef enum {
 
 bool vtxMspInit(void);
 void setMspVtxDeviceStatusReady(const int descriptor);
+bool isMspVtxDescriptor(const int descriptor);
 void prepareMspFrame(uint8_t *mspFrame);
+
+// VTX ON mode: once mapped to a switch, the VTX sits at the vtxtable's 0mW
+// level while disarmed unless the switch is on. Always on when armed or in failsafe
+bool vtxMspSwitchControlled(void);
+bool vtxMspForcedOff(void);
+// true when the forced-off state has changed but the VTX has not been told yet
+bool vtxMspOffStatePending(void);
+// Power index to send the VTX itself, which can differ from vtx_power
+uint8_t vtxMspPowerIndexForVtx(void);
