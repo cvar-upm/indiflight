@@ -97,7 +97,14 @@ void posCtlInit(void);
 #define SETPOINT_TIMEOUT_US            200000   // 0.2 sec
 
 #define EMERG_HOVER_MAX_V_HORZ                 1.0f     // m/s
-#define EMERG_HOVER_MAX_V_VERT                 0.5f     // m/s
+// stick limits once the pilot takes over emergency hover; a profile can raise
+// them with e.g. "#define EMERG_HOVER_MAX_V_DOWN=2.0f"
+#ifndef EMERG_HOVER_MAX_V_UP
+#define EMERG_HOVER_MAX_V_UP                   0.5f     // m/s
+#endif
+#ifndef EMERG_HOVER_MAX_V_DOWN
+#define EMERG_HOVER_MAX_V_DOWN                 0.5f     // m/s
+#endif
 #define EMERG_HOVER_TAKEOVER_THROTTLE_BAND     50.f     // us
 
 #define STICK_TAKEOVER_OFF                     0

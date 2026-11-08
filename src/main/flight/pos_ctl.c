@@ -311,7 +311,7 @@ void updatePosCtl(timeUs_t current) {
         {
             if (manual_takeover || emerg_takeover) {
                 if (emerg_takeover) {
-                    posGetVelSpNedFromSticks(EMERG_HOVER_MAX_V_HORZ, EMERG_HOVER_MAX_V_VERT, EMERG_HOVER_MAX_V_VERT);
+                    posGetVelSpNedFromSticks(EMERG_HOVER_MAX_V_HORZ, EMERG_HOVER_MAX_V_UP, EMERG_HOVER_MAX_V_DOWN);
                 } else {
                     posGetVelSpNedFromSticks(posRuntime.horz_max_v, posRuntime.vert_max_v_up, posRuntime.vert_max_v_down);
                 }

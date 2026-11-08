@@ -42,6 +42,9 @@
 ## stick takeover in offboard (flight/pos_ctl.c): 0 never, 1 only in emergency
 ## hover, 2 always, in every setpoint mode
 #define STICK_TAKEOVER_MODE=1
+## emergency hover stick takeover limits (flight/pos_ctl.h, default 0.5 m/s each):
+## fast descent so the pilot can land quickly, climb left at the default
+#define EMERG_HOVER_MAX_V_DOWN=2.0f
 
 
 ################################################
