@@ -106,6 +106,13 @@ void posCtlInit(void);
 #define EMERG_HOVER_MAX_V_DOWN                 0.5f     // m/s
 #endif
 #define EMERG_HOVER_TAKEOVER_THROTTLE_BAND     50.f     // us
+// 1: the emergency hover switch hands the sticks to the pilot at once,
+// 0: the pilot must first centre the throttle (EMERG_HOVER_TAKEOVER_THROTTLE_BAND) and move a stick
+#ifndef EMERG_HOVER_SWITCH_TAKEOVER
+#define EMERG_HOVER_SWITCH_TAKEOVER            0
+#endif
+
+#define ARREST_MOTION_VEL_THRESHOLD            0.5f     // m/s
 
 #define STICK_TAKEOVER_OFF                     0
 #define STICK_TAKEOVER_EMERG_HOVER             1

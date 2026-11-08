@@ -244,9 +244,12 @@ void updatePosCtl(timeUs_t current) {
 #endif // STICK_TAKEOVER_MODE
 
 #if STICK_TAKEOVER_MODE != STICK_TAKEOVER_OFF
+    // EMERG_HOVER_SWITCH_TAKEOVER: the switch alone hands the sticks to the pilot,
+    // otherwise the pilot must first centre the throttle and move a stick
     if (emerg_latched && !emerg_takeover && IS_RC_MODE_ACTIVE(BOXEMERGHOVER)
-            && FLIGHT_MODE(POSITION_MODE) && haveSticksMoved()
-            && fabsf(rcCommand[THROTTLE] - PWM_RANGE_MIDDLE) < EMERG_HOVER_TAKEOVER_THROTTLE_BAND) {
+            && FLIGHT_MODE(POSITION_MODE)
+            && (EMERG_HOVER_SWITCH_TAKEOVER || (haveSticksMoved()
+                && fabsf(rcCommand[THROTTLE] - PWM_RANGE_MIDDLE) < EMERG_HOVER_TAKEOVER_THROTTLE_BAND))) {
         emerg_takeover = true;
     }
 #endif
@@ -312,6 +315,11 @@ void updatePosCtl(timeUs_t current) {
             if (manual_takeover || emerg_takeover) {
                 if (emerg_takeover) {
                     posGetVelSpNedFromSticks(EMERG_HOVER_MAX_V_HORZ, EMERG_HOVER_MAX_V_UP, EMERG_HOVER_MAX_V_DOWN);
+                    // a switch takeover lands mid-brake: the brake's limit holds
+                    // (posGetAccSpNed) until the horizontal motion has stopped
+                    if (VEC3_XY_LENGTH(velEstNed) < ARREST_MOTION_VEL_THRESHOLD) {
+                        posRuntime.arrest_motion = false;
+                    }
                 } else {
                     posGetVelSpNedFromSticks(posRuntime.horz_max_v, posRuntime.vert_max_v_up, posRuntime.vert_max_v_down);
                 }
@@ -334,7 +342,6 @@ void updatePosCtl(timeUs_t current) {
                 rateSpBodyFromPos.V.X = 0;
                 rateSpBodyFromPos.V.Y = 0;
                 rateSpBodyFromPos.V.Z = 0;
-#define ARREST_MOTION_VEL_THRESHOLD 0.5f
                 if (VEC3_LENGTH(velEstNed) < ARREST_MOTION_VEL_THRESHOLD) {
                     posRuntime.arrest_motion = false;
                     if (posRuntime.arrest_z_motion_only) {
@@ -510,9 +517,10 @@ void posGetAccSpNed(timeUs_t current) {
 
     // limit such that max acceleration likely results in bank angle below 40 deg
     // but log if acceleration saturated, so we can pause error integration
-    // Only the emergency hover's brake may go further, until a pilot takes over or it has stopped
-    const bool emergBraking = emerg_latched && posRuntime.arrest_motion
-            && !emerg_takeover && !manual_takeover;
+    // Only the emergency hover's brake may go further, until it has stopped or a pilot
+    // takes over with the sticks (a switch takeover keeps it, EMERG_HOVER_SWITCH_TAKEOVER)
+    const bool emergBraking = emerg_latched && posRuntime.arrest_motion && !manual_takeover
+            && (EMERG_HOVER_SWITCH_TAKEOVER || !emerg_takeover);
     const float horzMaxA = emergBraking ? posRuntime.emerg_horz_max_a : posRuntime.horz_max_a;
     accSpXYSaturated = VEC3_XY_LENGTH(accSpNedFromPos) > horzMaxA;
     accSpZSaturated = (accSpNedFromPos.V.Z < -posRuntime.vert_max_a_up) || (accSpNedFromPos.V.Z > posRuntime.vert_max_a_down);

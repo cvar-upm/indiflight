@@ -45,6 +45,9 @@
 ## emergency hover stick takeover limits (flight/pos_ctl.h, default 0.5 m/s each):
 ## fast descent so the pilot can land quickly, climb left at the default
 #define EMERG_HOVER_MAX_V_DOWN=2.0f
+## the emergency hover switch hands the sticks to the pilot at once (no throttle
+## centring), so throttle at the bottom descends right away
+#define EMERG_HOVER_SWITCH_TAKEOVER=1
 
 
 ################################################
