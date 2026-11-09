@@ -215,9 +215,8 @@ set yaw_srate = 53
 rateprofile 2
 rateprofile 3
 indiprofile 0
-set indi_attitude_gains = 3850,3850,500
-set indi_rate_gains = 350,350,180
-set indi_attitude_max_tilt_rate = 1500
+set indi_attitude_gains = 1500,1500,500
+set indi_rate_gains = 230,230,180
 set indi_attitude_max_yaw_rate = 500
 set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
@@ -250,9 +249,11 @@ indiprofile 2
 # motor-fixed refit (replay_check/replay/fits_kf17/all, 2026-11-07): thrust coeff held at the realism
 # file's, motor lag held at the measured 17 ms; actuator model fitted to that ESC map: 30900 rpm, nonlinearity 61
 # from sysid_ws/replay_check/out/motor-fixed/indiflight_refit_motorfixed_indiprofile2.txt;
-# everything except the actuator model (incl. 17 ms time constant) and G1/G2 rows is identical to indiprofile 0
-set indi_attitude_gains = 1500,1500,500
-set indi_rate_gains = 230,230,180
+# aggressive attitude/rate gains + tilt rate limit for hard braking (position cascade in positionprofile 0);
+# everything else except the actuator model (incl. 17 ms time constant) and G1/G2 rows is identical to indiprofile 0
+set indi_attitude_gains = 3850,3850,500
+set indi_rate_gains = 350,350,180
+set indi_attitude_max_tilt_rate = 1500
 set indi_attitude_max_yaw_rate = 500
 set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30900,30900,30900,30900,40000,40000,40000,40000
