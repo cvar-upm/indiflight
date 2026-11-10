@@ -251,7 +251,9 @@ set indi_act_g1_yaw = -270,270,270,-270,0,0,0,0
 set indi_act_g2_yaw = -42,42,42,-42,0,0,0,0
 indiprofile 2
 # battery-sag set (2026-11-10): same vehicle model as the UNBOUND2 refit of every 4-9 Nov flight (38 sessions),
-# actuator time constant held at the measured 17 ms; actuator model fitted to the refitted ESC map: 30700 rpm, nonlinearity 70
+# actuator model fitted to the refitted ESC map: 30700 rpm, nonlinearity 70;
+# 2026-11-10: indi_act_time_constant_ms 17 -> 23 and indi_act_g1_yaw -168 -> -154, corrected to the
+# 2026-11-10 identification (drone 4, flight 01)
 # from sysid_ws/replay_check/out/battery_sag/indiflight_battery_sag_indiprofile2.txt;
 # aggressive attitude/rate gains + tilt rate limit for hard braking (position cascade in positionprofile 0);
 # everything else except the actuator model and G1/G2 rows is identical to indiprofile 0
@@ -263,14 +265,14 @@ set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30700,30700,30700,30700,40000,40000,40000,40000
 set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
 set indi_act_nonlinearity = 70,70,70,70,50,50,50,50
-set indi_act_time_constant_ms = 17,17,17,17,25,25,25,25
+set indi_act_time_constant_ms = 23,23,23,23,25,25,25,25
 set indi_act_max = 100,100,100,100,100,100,100,100
 set indi_act_g1_fx = 0,0,0,0,0,0,0,0
 set indi_act_g1_fy = 0,0,0,0,0,0,0,0
 set indi_act_g1_fz = -1464,-1464,-1464,-1464,0,0,0,0
 set indi_act_g1_roll = -4751,-3818,4749,3817,0,0,0,0
 set indi_act_g1_pitch = -1719,2139,-1719,2139,0,0,0,0
-set indi_act_g1_yaw = -168,168,168,-168,0,0,0,0
+set indi_act_g1_yaw = -154,154,154,-154,0,0,0,0
 set indi_act_g2_roll = 0,0,0,0,0,0,0,0
 set indi_act_g2_pitch = 0,0,0,0,0,0,0,0
 set indi_act_g2_yaw = -36,36,36,-36,0,0,0,0
