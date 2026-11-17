@@ -42,6 +42,12 @@
 ## stick takeover in offboard (flight/pos_ctl.c): 0 never, 1 only in emergency
 ## hover, 2 always, in every setpoint mode
 #define STICK_TAKEOVER_MODE=1
+## emergency hover stick takeover limits (flight/pos_ctl.h, default 0.5 m/s each):
+## fast descent so the pilot can land quickly, climb left at the default
+#define EMERG_HOVER_MAX_V_DOWN=2.0f
+## the emergency hover switch hands the sticks to the pilot at once (no throttle
+## centring), so throttle at the bottom descends right away
+#define EMERG_HOVER_SWITCH_TAKEOVER=1
 
 
 ################################################
@@ -223,29 +229,14 @@ set indi_act_g1_pitch = -2023,2428,-1994,2536,0,0,0,0
 set indi_act_g1_yaw = -160,160,160,-160,0,0,0,0
 set indi_act_g2_yaw = -32,32,32,-32,0,0,0,0
 indiprofile 1
-# refit profile, option A (weighted fit, actuator model as flown: 30000 rpm, nonlinearity 40)
-# from sysid_ws/replay_check/out/indiflight_refit_profile_w.txt (2026-11-06);
-# everything except the G1/G2 rows is identical to indiprofile 0
-set indi_attitude_gains = 1500,1500,500
-set indi_rate_gains = 230,230,180
-set indi_attitude_max_yaw_rate = 500
-set indi_max_rate_setpoint = 1500,1500,1500
-set indi_act_max_rpm = 30000,30000,30000,30000,40000,40000,40000,40000
-set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
-set indi_act_nonlinearity = 40,40,40,40,50,50,50,50
-set indi_act_max = 100,100,100,100,100,100,100,100
-set indi_act_g1_fz = -1575,-1575,-1575,-1575,0,0,0,0
-set indi_act_g1_roll = -5635,-4509,5831,4706,0,0,0,0
-set indi_act_g1_pitch = -1922,2447,-1922,2447,0,0,0,0
-set indi_act_g1_yaw = -281,281,281,-281,0,0,0,0
-set indi_act_g2_yaw = -38,38,38,-38,0,0,0,0
-indiprofile 2
 # motor-fixed refit (replay_check/replay/fits_kf17/all, 2026-11-07): thrust coeff held at the realism
 # file's, motor lag held at the measured 17 ms; actuator model fitted to that ESC map: 30900 rpm, nonlinearity 61
 # from sysid_ws/replay_check/out/motor-fixed/indiflight_refit_motorfixed_indiprofile2.txt;
-# everything except the actuator model (incl. 17 ms time constant) and G1/G2 rows is identical to indiprofile 0
-set indi_attitude_gains = 1500,1500,500
-set indi_rate_gains = 230,230,180
+# aggressive attitude/rate gains + tilt rate limit for hard braking (position cascade in positionprofile 0);
+# everything else except the actuator model (incl. 17 ms time constant) and G1/G2 rows is identical to indiprofile 0
+set indi_attitude_gains = 3850,3850,500
+set indi_rate_gains = 350,350,180
+set indi_attitude_max_tilt_rate = 1500
 set indi_attitude_max_yaw_rate = 500
 set indi_max_rate_setpoint = 1500,1500,1500
 set indi_act_max_rpm = 30900,30900,30900,30900,40000,40000,40000,40000
@@ -258,11 +249,39 @@ set indi_act_g1_roll = -5556,-4447,5750,4641,0,0,0,0
 set indi_act_g1_pitch = -1927,2497,-1927,2497,0,0,0,0
 set indi_act_g1_yaw = -270,270,270,-270,0,0,0,0
 set indi_act_g2_yaw = -42,42,42,-42,0,0,0,0
+indiprofile 2
+# battery-sag set (2026-11-10): same vehicle model as the UNBOUND2 refit of every 4-9 Nov flight (38 sessions),
+# actuator model fitted to the refitted ESC map: 30700 rpm, nonlinearity 70;
+# 2026-11-10: indi_act_time_constant_ms 17 -> 23 and indi_act_g1_yaw -168 -> -154, corrected to the
+# 2026-11-10 identification (drone 4, flight 01)
+# from sysid_ws/replay_check/out/battery_sag/indiflight_battery_sag_indiprofile2.txt;
+# aggressive attitude/rate gains + tilt rate limit for hard braking (position cascade in positionprofile 0);
+# everything else except the actuator model and G1/G2 rows is identical to indiprofile 0
+set indi_attitude_gains = 3850,3850,500
+set indi_rate_gains = 350,350,180
+set indi_attitude_max_tilt_rate = 1500
+set indi_attitude_max_yaw_rate = 500
+set indi_max_rate_setpoint = 1500,1500,1500
+set indi_act_max_rpm = 30700,30700,30700,30700,40000,40000,40000,40000
+set indi_act_hover_rpm = 8000,8000,8000,8000,20000,20000,20000,20000
+set indi_act_nonlinearity = 70,70,70,70,50,50,50,50
+set indi_act_time_constant_ms = 23,23,23,23,25,25,25,25
+set indi_act_max = 100,100,100,100,100,100,100,100
+set indi_act_g1_fx = 0,0,0,0,0,0,0,0
+set indi_act_g1_fy = 0,0,0,0,0,0,0,0
+set indi_act_g1_fz = -1464,-1464,-1464,-1464,0,0,0,0
+set indi_act_g1_roll = -4751,-3818,4749,3817,0,0,0,0
+set indi_act_g1_pitch = -1719,2139,-1719,2139,0,0,0,0
+set indi_act_g1_yaw = -154,154,154,-154,0,0,0,0
+set indi_act_g2_roll = 0,0,0,0,0,0,0,0
+set indi_act_g2_pitch = 0,0,0,0,0,0,0,0
+set indi_act_g2_yaw = -36,36,36,-36,0,0,0,0
 positionprofile 0
-set position_horizontal_p = 40
+set position_horizontal_p = 80
 set position_horizontal_i = 1
-set position_horizontal_d = 18
+set position_horizontal_d = 60
 set position_max_horizontal_speed = 500
+set position_emerg_max_horizontal_accel = 3500
 set position_vertical_p = 90
 set position_vertical_i = 3
 set position_max_upwards_accel = 1000

@@ -36,6 +36,7 @@ typedef struct positionProfile_s {
     uint8_t horz_d; // m/s/s per m/s * 10
     uint16_t horz_max_v; // cm/s 
     uint16_t horz_max_a; // cm/s/s  FIXME: are box shaped constraints what we want?
+    uint16_t emerg_horz_max_a; // cm/s/s, replaces horz_max_a while emergency hover arrests motion
     uint8_t max_tilt;   // in automatic flight in deg (0, 180)
     uint8_t vert_p; // m/s/s per m * 10
     uint8_t vert_i; // m/s/s per m/s * s  * 10
@@ -60,6 +61,7 @@ typedef struct positionRuntime_s {
     float horz_d; // m/s/s per m/s
     float horz_max_v; // m/s
     float horz_max_a; // m/s/s
+    float emerg_horz_max_a; // m/s/s
     float max_tilt;   // rad
     float horz_max_iterm; // m/s
     float vert_p; // m/s/s per m
@@ -95,8 +97,22 @@ void posCtlInit(void);
 #define SETPOINT_TIMEOUT_US            200000   // 0.2 sec
 
 #define EMERG_HOVER_MAX_V_HORZ                 1.0f     // m/s
-#define EMERG_HOVER_MAX_V_VERT                 0.5f     // m/s
+// stick limits once the pilot takes over emergency hover; a profile can raise
+// them with e.g. "#define EMERG_HOVER_MAX_V_DOWN=2.0f"
+#ifndef EMERG_HOVER_MAX_V_UP
+#define EMERG_HOVER_MAX_V_UP                   0.5f     // m/s
+#endif
+#ifndef EMERG_HOVER_MAX_V_DOWN
+#define EMERG_HOVER_MAX_V_DOWN                 0.5f     // m/s
+#endif
 #define EMERG_HOVER_TAKEOVER_THROTTLE_BAND     50.f     // us
+// 1: the emergency hover switch hands the sticks to the pilot at once,
+// 0: the pilot must first centre the throttle (EMERG_HOVER_TAKEOVER_THROTTLE_BAND) and move a stick
+#ifndef EMERG_HOVER_SWITCH_TAKEOVER
+#define EMERG_HOVER_SWITCH_TAKEOVER            0
+#endif
+
+#define ARREST_MOTION_VEL_THRESHOLD            0.5f     // m/s
 
 #define STICK_TAKEOVER_OFF                     0
 #define STICK_TAKEOVER_EMERG_HOVER             1
